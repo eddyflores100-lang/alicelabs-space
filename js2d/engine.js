@@ -9,7 +9,9 @@ export const VW = 640, VH = 360;    // resolución interna (pixel-art)
 // ---- Estado global compartido ----
 export const G = {
   tiempo: 0,
-  modo: 'city',            // 'city' | 'hq'
+  modo: 'city',            // 'city' | 'interior'
+  mapId: null,             // id del interior actual (null = ciudad)
+  lastDoor: null,          // puerta de la ciudad por la que se entró
   monedas: parseInt(localStorage.getItem('alice_monedas') || '0', 10) || 0,
   energia: 95,
   activos: 3450,
@@ -81,6 +83,12 @@ addEventListener('keydown', e => {
 addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
 export function consume(k) { if (pressed[k]) { pressed[k] = false; return true; } return false; }
 export function clearPressed() { for (const k in pressed) pressed[k] = false; }
+// inyección de teclas para controles táctiles / pruebas
+export function pressKey(k, ms = 160) {
+  pressed[k] = true;
+  keys[k] = true;
+  setTimeout(() => { keys[k] = false; }, ms);
+}
 
 // ---- RNG determinista ----
 export function mulberry32(seed) {

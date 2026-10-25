@@ -111,7 +111,9 @@ const ESTILOS = [
   { l: '#101a2b', r: '#16233c', t: '#1e3050' },
   { l: '#1a1230', r: '#221a42', t: '#2c2456' },
   { l: '#161821', r: '#1e2130', t: '#282c42' },
-  { l: '#20142a', r: '#291c38', t: '#352748' }
+  { l: '#20142a', r: '#291c38', t: '#352748' },
+  { l: '#2b1d14', r: '#3a2a1c', t: '#4a3624' },   // casas del cinturón
+  { l: '#0e2a30', r: '#123840', t: '#1a4a54' }    // apartamento del operador
 ];
 
 export function drawBuilding(b, t) {

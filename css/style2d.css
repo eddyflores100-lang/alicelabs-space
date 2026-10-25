@@ -224,3 +224,70 @@ body {
 }
 .toast.out { opacity: 0; transform: translateY(-8px); }
 @keyframes entra { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; } }
+
+/* ============================================================
+   ALICE CITY v6 — TÁCTIL / MÓVIL
+   ============================================================ */
+/* botones de toggle (solo móvil) */
+.mtn {
+  display: none;
+  background: rgba(0,240,255,0.06); color: var(--cian);
+  border: 1px solid var(--line); padding: 3px 10px;
+  font-family: inherit; font-size: 11px; cursor: pointer;
+}
+body.touch .mtn, body.movil .mtn { display: inline-block; }
+
+/* ---- UI táctil ---- */
+#touch-ui { position: fixed; inset: 0; z-index: 45; pointer-events: none; display: none; }
+body.touch #touch-ui { display: block; }
+#joy {
+  position: absolute; left: 16px; bottom: 78px;
+  width: 116px; height: 116px; border-radius: 50%;
+  background: rgba(8,12,26,0.45);
+  border: 2px solid rgba(0,240,255,0.35);
+  pointer-events: auto; touch-action: none;
+  box-shadow: 0 0 14px rgba(0,240,255,0.15), inset 0 0 18px rgba(0,240,255,0.05);
+}
+#joy.on { border-color: rgba(0,240,255,0.75); }
+#knob {
+  position: absolute; left: 50%; top: 50%;
+  width: 48px; height: 48px; border-radius: 50%;
+  margin: -24px 0 0 -24px;
+  background: radial-gradient(circle at 35% 30%, #0e3a4a, #06121e);
+  border: 2px solid rgba(0,240,255,0.6);
+  box-shadow: 0 0 12px rgba(0,240,255,0.4);
+  pointer-events: none;
+}
+#tbtns { position: absolute; right: 14px; bottom: 78px; width: 132px; height: 150px; pointer-events: none; }
+.tbtn {
+  position: absolute; pointer-events: auto; touch-action: none;
+  border-radius: 50%; user-select: none; -webkit-user-select: none;
+  font-family: inherit; font-weight: bold; color: var(--cian);
+  background: rgba(8,12,26,0.55);
+  border: 2px solid rgba(0,240,255,0.45);
+  box-shadow: 0 0 12px rgba(0,240,255,0.18);
+}
+.tbtn.on { background: rgba(0,240,255,0.25); color: #fff; }
+.tbtn.big { right: 8px; bottom: 46px; width: 68px; height: 68px; font-size: 26px; border-color: rgba(57,255,136,0.6); color: var(--verde); }
+.tbtn.big.on { background: rgba(57,255,136,0.25); }
+.tbtn { right: 84px; bottom: 60px; width: 52px; height: 52px; font-size: 10px; letter-spacing: 1px; }
+.tbtn.mini { right: 84px; bottom: 6px; width: 40px; height: 40px; font-size: 16px; }
+.tbtn.mini:last-child { right: 36px; bottom: 6px; }
+
+/* ---- móvil: menú y chat como overlays ---- */
+@media (max-width: 760px) {
+  body.movil #menu {
+    display: none;
+    left: 6px; right: 6px; width: auto; top: 40px; bottom: 42px; z-index: 60;
+  }
+  body.movil.menu-open #menu { display: flex; }
+  body.movil #chat {
+    display: none;
+    left: 6px; right: 6px; width: auto; top: auto; height: 55%; bottom: 42px; z-index: 60;
+  }
+  body.movil.chat-open #chat { display: flex; }
+  #topbar { gap: 8px; font-size: 10px; padding: 0 6px; }
+  #topbar .status, #topbar .ver { display: none; }
+  #bottombar { font-size: 10px; gap: 6px; }
+  #bottombar .lbl:nth-of-type(2), #bottombar .lbl:nth-of-type(3) { display: none; }
+}

@@ -5,7 +5,7 @@
 // ============================================================
 import { G, addCoins, spendCoins, saveState, sfx, beep, audioInit, onCoinsChange } from './engine.js';
 import { player, npcs } from './agents.js';
-import { inpcs, racks } from './interior.js';
+import { MAPS, getCurrent } from './maps.js';
 import { spots } from './city.js';
 
 // ---------------- TAREAS (8) ----------------
@@ -17,7 +17,9 @@ export const QUESTS = [
   { id: 'P5', t: 'Inspección de semáforos', d: 'Verifica los cruces NW y SE del anillo vial.', alc: 12, spots: ['q5a', 'q5b'], giver: null },
   { id: 'P6', t: 'Reunión en la Torre Alice', d: 'Entra al HQ y habla con la Jefa Vega en la sala de conferencias.', alc: 20, giver: 'Ada', oculta: true },
   { id: 'P7', t: 'Turno en el Server Room', d: 'Activa los 3 racks del server room del HQ (tecla E).', alc: 18, giver: 'Ada', oculta: true },
-  { id: 'P8', t: 'Ronda del cinturón', d: 'Ronda completa por las 4 esquinas del cinturón verde.', alc: 25, spots: ['q8a', 'q8b', 'q8c', 'q8d'], giver: null }
+  { id: 'P8', t: 'Ronda del cinturón', d: 'Ronda completa por las 4 esquinas del cinturón verde.', alc: 25, spots: ['q8a', 'q8b', 'q8c', 'q8d'], giver: null },
+  { id: 'P9', t: 'Puertas de la ciudad', d: 'Visita las puertas de DATA HUB, ANALYSIS y SRV-7.', alc: 15, spots: ['doorHub', 'doorAnalysis', 'doorSrv'], giver: null },
+  { id: 'P10', t: 'Vida de vecino', d: 'Visita la CASA-7, la CASA-12 y tu APTO del distrito sur.', alc: 20, spots: ['doorCasa7', 'doorCasa12', 'doorApto'], giver: null }
 ];
 
 export function qEstado(id) {
@@ -164,6 +166,17 @@ export function startBots() { botLoop(); }
 
 // ---------------- PANELES ----------------
 let panelActivo = 'tareas';
+export function showPanel(p) {
+  panelActivo = p;
+  document.querySelectorAll('#menu-tabs button').forEach(b => b.classList.toggle('sel', b.dataset.p === p));
+  document.querySelectorAll('.panel').forEach(el => el.classList.toggle('hidden', el.id !== 'panel-' + p));
+  if (p === 'tareas') renderTareas();
+  if (p === 'tienda') renderTienda();
+  if (p === 'agentes') renderAgentes();
+  if (p === 'billetera') renderBilletera();
+  if (p === 'log') { const el = document.getElementById('log-list'); el.innerHTML = logs.map(l => `<div class="log-line ${l.cls}"><span>${l.t}</span> ${l.txt}</div>`).join(''); }
+  if (p === 'mapa') drawMini();
+}
 
 export function initUI() {
   // tabs
@@ -202,18 +215,6 @@ export function initUI() {
     G.activos = 3450 + Math.floor(Math.random() * 7) - 3;
     updateHUD();
   }, 4000);
-}
-
-function showPanel(p) {
-  panelActivo = p;
-  document.querySelectorAll('#menu-tabs button').forEach(b => b.classList.toggle('sel', b.dataset.p === p));
-  document.querySelectorAll('.panel').forEach(el => el.classList.toggle('hidden', el.id !== 'panel-' + p));
-  if (p === 'tareas') renderTareas();
-  if (p === 'tienda') renderTienda();
-  if (p === 'agentes') renderAgentes();
-  if (p === 'billetera') renderBilletera();
-  if (p === 'log') { const el = document.getElementById('log-list'); el.innerHTML = logs.map(l => `<div class="log-line ${l.cls}"><span>${l.t}</span> ${l.txt}</div>`).join(''); }
-  if (p === 'mapa') drawMini();
 }
 
 export function updateHUD() {
@@ -311,12 +312,14 @@ function zonaDe(a) {
 function renderAgentes() {
   const el = document.getElementById('agentes-list');
   if (!el) return;
-  const all = [...npcs.map(n => ({ n, z: zonaDe(n) })), ...inpcs.map(n => ({ n, z: 'HQ Torre Alice' }))];
+  const interiores = [];
+  for (const id in MAPS) for (const n of MAPS[id].npcs) interiores.push({ n, z: MAPS[id].name });
+  const all = [...npcs.map(n => ({ n, z: zonaDe(n) })), ...interiores];
   el.innerHTML = all.map(({ n, z }) =>
-    `<div class="ag-line"><span class="dot ${n.sentado ? 'ama' : (n.estatico ? 'cian' : 'ver')}"></span>
+    `<div class="ag-line"><span class="dot ${n.gato ? 'ama' : (n.sentado ? 'ama' : (n.estatico ? 'cian' : 'ver'))}"></span>
      <b style="color:${n.colorTag || '#9fd8ff'}">${n.name}</b>
      <span class="zona">${z}</span>
-     <span class="st">${n.sentado ? 'trabajando' : (n.estatico ? 'en puesto' : 'en ruta')}</span></div>`
+     <span class="st">${n.gato ? 'durmiendo' : (n.sentado ? 'trabajando' : (n.estatico ? 'en puesto' : 'en ruta'))}</span></div>`
   ).join('');
 }
 
@@ -350,6 +353,19 @@ export function drawMini() {
   const c2 = cv.getContext('2d');
   const S = 8;
   c2.fillStyle = '#0a0d1a'; c2.fillRect(0, 0, cv.width, cv.height);
+  if (G.modo !== 'city') {
+    const m = getCurrent();
+    c2.fillStyle = '#2c3554';
+    c2.fillRect(20, 30, cv.width - 40, cv.height - 60);
+    c2.fillStyle = '#00f0ff'; c2.font = 'bold 9px monospace'; c2.textAlign = 'center';
+    c2.fillText(m ? m.name : 'INTERIOR', cv.width / 2, 50);
+    c2.fillStyle = '#0a0d1a'; c2.textAlign = 'left';
+    c2.font = '8px monospace';
+    c2.fillText('sal por el tapete ↓', cv.width / 2 - 44, cv.height / 2 + 40);
+    c2.fillStyle = '#00f0ff';
+    c2.fillRect(player.gx * 16 + 12, player.gy * 16 + 24, 5, 5);
+    return;
+  }
   // tiles simplificados
   for (let y = 0; y < 24; y++) for (let x = 0; x < 24; x++) {
     const t = window.__aliceTileAt ? window.__aliceTileAt(x, y) : 0;

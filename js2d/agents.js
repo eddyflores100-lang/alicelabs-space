@@ -4,11 +4,45 @@
 // NPCs solo por aceras, plazas y cruces autorizados.
 // ============================================================
 import { G, ctx, keys, clamp, dist2, hash2 } from './engine.js';
-import { isSolid, patrols, spots } from './city.js';
+import { spots, patrols } from './city.js';
+import { blockedAt, nearestFree, getCurrent } from './maps.js';
 
 // ---------- SPRITES ----------
+// gato mascota (Gato Bot del apto)
+function drawCat(x, y, a, t) {
+  const bob = Math.sin(t * 2 + a.seed * 6) * 0.5;
+  const baseY = y - bob;
+  ctx.fillStyle = 'rgba(0,0,0,0.35)';
+  ctx.beginPath(); ctx.ellipse(x, y + 1, 4.5, 1.8, 0, 0, 7); ctx.fill();
+  // cola
+  ctx.strokeStyle = a.pal.jacket; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.moveTo(x + 4, baseY - 4);
+  ctx.quadraticCurveTo(x + 8, baseY - 7 + Math.sin(t * 3) * 2, x + 7, baseY - 11);
+  ctx.stroke(); ctx.lineWidth = 1;
+  // cuerpo
+  ctx.fillStyle = a.pal.jacket;
+  ctx.beginPath(); ctx.ellipse(x, baseY - 5, 5, 3.4, 0, 0, 7); ctx.fill();
+  // cabeza
+  ctx.beginPath(); ctx.ellipse(x - 3.5, baseY - 9, 3.4, 3, 0, 0, 7); ctx.fill();
+  // orejas
+  ctx.beginPath(); ctx.moveTo(x - 6.5, baseY - 11); ctx.lineTo(x - 5, baseY - 13.5); ctx.lineTo(x - 4, baseY - 11); ctx.closePath(); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(x - 3, baseY - 11.5); ctx.lineTo(x - 1.8, baseY - 13.5); ctx.lineTo(x - 0.8, baseY - 11); ctx.closePath(); ctx.fill();
+  // ojos led
+  ctx.fillStyle = '#39ff88';
+  ctx.fillRect(x - 5, baseY - 9.5, 1.4, 1.4); ctx.fillRect(x - 2.8, baseY - 9.5, 1.4, 1.4);
+  if (a.name) {
+    ctx.font = '7px monospace'; ctx.textAlign = 'center';
+    const w = ctx.measureText(a.name).width + 6;
+    ctx.fillStyle = 'rgba(4,6,14,0.75)';
+    ctx.fillRect(x - w / 2, baseY - 22, w, 9);
+    ctx.fillStyle = a.colorTag || '#ff9a3d';
+    ctx.fillText(a.name, x, baseY - 15);
+    ctx.textAlign = 'left';
+  }
+}
 // agente de pie/caminando; paleta: {skin, hair, jacket, pants}
 export function drawAgent(x, y, a, t, zoom) {
+  if (a.gato) return drawCat(x, y, a, t);
   const walk = a.state === 'walk';
   const ph = a.phase;
   const bob = walk ? Math.abs(Math.sin(ph * 8)) * 1.2 : Math.sin(t * 2 + a.seed * 6) * 0.4;
@@ -135,8 +169,8 @@ export class NPC {
     }
     const sp = this.speed * dt * (this.state === 'idle' ? 0 : 1);
     const nx = this.gx + dx / d * sp, ny = this.gy + dy / d * sp;
-    // NUNCA atravesar sólidos
-    if (!isSolid(nx, ny)) { this.gx = nx; this.gy = ny; }
+    // NUNCA atravesar sólidos (vale para ciudad e interiores)
+    if (!blockedAt(nx, ny)) { this.gx = nx; this.gy = ny; }
     else this.pi = (this.pi + dirStep + pts.length) % pts.length;
     this.phase += sp * 3;
     this.dir = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 0 : 2) : (dy > 0 ? 1 : 3);
@@ -155,7 +189,7 @@ export class NPC {
 
 // ---------- JUGADOR ----------
 export const player = {
-  gx: 8.5, gy: 11.2, speed: 2.3, phase: 0, state: 'idle', dir: 0,
+  gx: 8.5, gy: 6.5, speed: 2.3, phase: 0, state: 'idle', dir: 0,
   name: 'TÚ-OPERADOR', colorTag: '#00f0ff', seed: 1, talk: null, talkT: 0,
   pal: { skin: '#e8b88a', hair: '#101322', jacket: '#00b4d8', pants: '#1a1d30' },
   extras: {}, trail: []
@@ -163,7 +197,7 @@ export const player = {
 
 function collide(nx, ny, r) {
   for (const [ox, oy] of [[-r, -r], [r, -r], [-r, r], [r, r]]) {
-    if (isSolid(nx + ox, ny + oy)) return true;
+    if (blockedAt(nx + ox, ny + oy)) return true;
   }
   return false;
 }
@@ -172,6 +206,13 @@ export let carBlockFn = null;
 export function setCarBlock(fn) { carBlockFn = fn; }
 
 export function updatePlayer(dt) {
+  // DESATASCO: si el jugador quedó embebido en sólidos, empújalo al centro libre más cercano.
+  // (nunca más spawns atrapados por mobiliario)
+  const embed = collide(player.gx, player.gy, 0.05);
+  if (embed) {
+    const free = nearestFree(player.gx, player.gy, 5);
+    if (free) { player.gx = free[0]; player.gy = free[1]; }
+  }
   const kd = k => !!keys[k];
   let mx = 0, my = 0;
   if (kd('w') || kd('arrowup')) { mx -= 1; my -= 1; }
@@ -183,16 +224,27 @@ export function updatePlayer(dt) {
     const l = Math.hypot(mx, my); mx /= l; my /= l;
     const sp = player.speed * dt * (G.energia <= 0 ? 0.55 : 1);
     const r = 0.28;
+    const enCiudad = G.modo === 'city';
+    const hard = (x, y) => collide(x, y, r) || (enCiudad && carBlockFn && carBlockFn(x, y));
     const nx = player.gx + mx * sp;
-    if (!collide(nx, player.gy, r) && !(carBlockFn && carBlockFn(nx, player.gy))) player.gx = nx;
+    if (!hard(nx, player.gy)) player.gx = nx;
     const ny = player.gy + my * sp;
-    if (!collide(player.gx, ny, r) && !(carBlockFn && carBlockFn(player.gx, ny))) player.gy = ny;
+    if (!hard(player.gx, ny)) player.gy = ny;
     player.phase += sp * 3;
     player.state = 'walk';
     player.dir = Math.abs(mx) > Math.abs(my) ? (mx > 0 ? 0 : 2) : (my > 0 ? 1 : 3);
   } else player.state = 'idle';
-  player.gx = clamp(player.gx, 0.4, 23.6);
-  player.gy = clamp(player.gy, 0.4, 23.6);
+  // límites según mapa activo
+  if (G.modo === 'city') {
+    player.gx = clamp(player.gx, 0.4, 23.6);
+    player.gy = clamp(player.gy, 0.4, 23.6);
+  } else {
+    const m = getCurrent();
+    if (m) {
+      player.gx = clamp(player.gx, 0.7, m.w - 0.7);
+      player.gy = clamp(player.gy, 0.7, m.h - 0.4);
+    }
+  }
   if (player.talkT > 0) { player.talkT -= dt; if (player.talkT <= 0) player.talk = null; }
   if (player.extras.trail && moving) {
     player.trail.push({ x: player.gx, y: player.gy, a: 1 });

@@ -92,19 +92,27 @@ export function buildCity() {
   B(14, 8, 2, 2, 64, 'ANALYSIS', '#39ff88', 1);
   B(16, 8, 2, 2, 40, 'SRV-7', '#9aa3c0', 3);
   B(6, 14, 2, 2, 56, 'MERCADO', '#ffb347', 4);
-  B(8, 14, 2, 2, 60, 'SERVICIOS', '#39ff88', 2);
+  B(8, 14, 2, 2, 60, 'TU APTO', '#00f0ff', 2);      // tu apartamento (era SERVICIOS)
   B(14, 14, 2, 2, 44, 'LOGISTICA', '#7a9bff', 3);
   B(16, 14, 2, 2, 72, 'LABS', '#c17aff', 0);
+  // casas del cinturón verde (interiores visitables)
+  B(0, 6, 2, 2, 26, 'CASA-7', '#ff9a3d', 5);
+  B(22, 18, 2, 2, 26, 'CASA-12', '#39ff88', 5);
 
   // puertas / puntos de misión
   spots.doorAlice = { gx: 8.35, gy: 7.0, label: 'TORRE ALICE · HQ' };
   spots.doorHub = { gx: 16.35, gy: 7.0, label: 'DATA HUB' };
   spots.doorNeural = { gx: 18.35, gy: 7.0, label: 'NEURAL CORE' };
   spots.doorAnalysis = { gx: 16.35, gy: 9.0, label: 'ANALYSIS CENTER' };
+  spots.doorSrv = { gx: 18.35, gy: 8.6, label: 'SRV-7' };
   spots.doorMercado = { gx: 8.35, gy: 15.0, label: 'MERCADO' };
-  spots.doorServicios = { gx: 10.35, gy: 15.0, label: 'AGENT SERVICES' };
+  spots.doorApto = { gx: 10.35, gy: 15.0, label: 'TU APTO' };
   spots.doorLogistica = { gx: 16.35, gy: 15.0, label: 'LOGÍSTICA' };
   spots.doorLabs = { gx: 18.35, gy: 15.0, label: 'AGENT LABS' };
+  spots.doorCasa7 = { gx: 2.35, gy: 7.0, label: 'CASA-7' };
+  spots.doorCasa12 = { gx: 21.65, gy: 18.5, label: 'CASA-12' };
+  // alias histórico (misiones guardadas)
+  spots.doorServicios = spots.doorApto;
   spots.q1a = { gx: 6.5, gy: 9.5, label: 'plaza·sur' };
   spots.q1b = { gx: 9.5, gy: 6.5, label: 'plaza·norte' };
   spots.q1c = { gx: 5.6, gy: 7.5, label: 'plaza·oeste' };
@@ -160,10 +168,15 @@ export function buildCity() {
   for (let r = 13; r <= 18; r += 2) { arboles.push([1.2, r + 0.5]); arboles.push([22.8, r + 0.5]); }
   for (let c = 5; c <= 10; c += 2) { arboles.push([c + 0.5, 1.2]); arboles.push([c + 0.5, 22.8]); }
   for (let c = 13; c <= 18; c += 2) { arboles.push([c + 0.5, 1.2]); arboles.push([c + 0.5, 22.8]); }
-  for (const a of arboles) prop('arbol', a[0], a[1], true, { big: hash2(a[0] * 10 | 0, a[1] * 10 | 0) > 0.5 });
+  for (const a of arboles) {
+    // los árboles NUNCA dentro de edificios (colisión ya marcada)
+    if (solid[idx(Math.floor(a[0]), Math.floor(a[1]))] === 1) continue;
+    prop('arbol', a[0], a[1], true, { big: hash2(a[0] * 10 | 0, a[1] * 10 | 0) > 0.5 });
+  }
 
   // vallas publicitarias del cinturón (mensajes rotativos)
-  prop('valla', 1.5, 7.5, true, { msg: 0 }); prop('valla', 1.5, 16.5, true, { msg: 1 });
+  prop('valla', 1.5, 11.5, true, { msg: 0 });   // reubicada: la CASA-7 ocupa (0..1, 6..7)
+  prop('valla', 1.5, 16.5, true, { msg: 1 });
   prop('valla', 7.5, 1.5, true, { msg: 2 }); prop('valla', 16.5, 1.5, true, { msg: 3 });
   prop('valla', 22.5, 10.5, true, { msg: 4 }); prop('valla', 10.5, 22.5, true, { msg: 5 });
 
@@ -200,3 +213,19 @@ export function lightPhase(t) {
   if (p < 13) return { V: 0, H: 2 };
   return { V: 0, H: 1 };
 }
+
+// ---------- PUERTAS DE LA CIUDAD → INTERIORES ----------
+// Cada puerta de edificio lleva a su propio mapa interior.
+export const puertas = [
+  { spot: 'doorAlice', mapa: 'hq', label: 'TORRE ALICE · HQ' },
+  { spot: 'doorHub', mapa: 'hub', label: 'DATA HUB' },
+  { spot: 'doorNeural', mapa: 'neural', label: 'NEURAL CORE' },
+  { spot: 'doorAnalysis', mapa: 'analysis', label: 'ANALYSIS CENTER' },
+  { spot: 'doorSrv', mapa: 'srv7', label: 'SRV-7' },
+  { spot: 'doorMercado', mapa: 'mercado', label: 'MERCADO' },
+  { spot: 'doorApto', mapa: 'apto', label: 'TU APTO' },
+  { spot: 'doorLogistica', mapa: 'logistica', label: 'LOGÍSTICA' },
+  { spot: 'doorLabs', mapa: 'labs', label: 'AGENT LABS' },
+  { spot: 'doorCasa7', mapa: 'casa7', label: 'CASA-7' },
+  { spot: 'doorCasa12', mapa: 'casa12', label: 'CASA-12' }
+];

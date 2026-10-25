@@ -1,33 +1,49 @@
 // ============================================================
-// ALICE CITY v5 — MAIN (loop, interacciones, transiciones)
+// ALICE CITY v6 — MAIN (loop, puertas multi-mapa, interacciones)
+// Ciudad principal + 11 interiores: entra por puertas [E],
+// sale por el tapete de salida. Como en un juego completo.
 // ============================================================
-import { G, ctx, cam, VW, VH, gridToWorld, worldToGrid, toScreen, keys, consume, clearPressed, clamp, lerp, dist2, fadeTo, addCoins, saveState, audioInit, sfx, onCoinsChange } from './engine.js';
-import { buildCity, spots, buildings, props, crosswalks, distritos, isSolid, tile as cityTileArr } from './city.js';
+import { G, ctx, cam, VW, VH, gridToWorld, toScreen, keys, consume, clamp, lerp, dist2, fadeTo, addCoins, saveState, audioInit, sfx, onCoinsChange } from './engine.js';
+import { buildCity, spots, buildings, props, crosswalks, distritos, tile as cityTileArr, puertas } from './city.js';
 import { drawGround, drawBuilding, drawProp, drawLights, drawCarBody } from './draw.js';
 import { player, updatePlayer, npcs, spawnNPCs, drawAgent, drawSeated, setCarBlock } from './agents.js';
 import { cars, spawnCars, updateCars, drawCars, carBlock, setPedList } from './cars.js';
-import { buildInterior, itile, isolid, iprops, inpcs, racks, isolidAt, drawInteriorGround, drawWallTile, drawIProp, drawINpcs, IC, IR } from './interior.js';
-import { initUI, updateHUD, pushLog, toast, chatPush, startBots, qEstado, aceptarQuest, completarQuest, QUESTS, applyEquipped, drawMini, renderTareas } from './ui.js';
+import { buildAllInteriors, drawInteriorGround, drawWallTile, drawIProp } from './interior.js';
+import { MAPS, setCurrent, getCurrent } from './maps.js';
+import { initUI, updateHUD, pushLog, toast, chatPush, startBots, qEstado, aceptarQuest, completarQuest, QUESTS, applyEquipped, drawMini, renderTareas, showPanel } from './ui.js';
+import { initTouch } from './touch.js';
 
 // ---------- arranque ----------
 buildCity();
-buildInterior();
+buildAllInteriors();
 spawnNPCs();
 spawnCars();
 setCarBlock(carBlock);
 applyEquipped();
+initTouch();
 
 // primera visita: bono de bienvenida
 if (!localStorage.getItem('alice_v5_hola')) {
   localStorage.setItem('alice_v5_hola', '1');
-  addCoins(25, 'Bono de bienvenida ALICE CITY v5');
+  addCoins(25, 'Bono de bienvenida ALICE CITY');
 }
 
 // hooks globales para ui.js (minimapa)
 window.__aliceTileAt = (x, y) => G.modo === 'city' ? (crosswalks.has(y * 24 + x) ? 4 : cityTileArr[y * 24 + x]) : 1;
 window.__aliceCars = cars;
 // handle de depuración / integración
-window.__alice = { G, player, npcs, cars, teleport: (gx, gy) => { player.gx = gx; player.gy = gy; } };
+window.__alice = {
+  G, player, npcs, cars, MAPS,
+  teleport: (gx, gy) => { player.gx = gx; player.gy = gy; },
+  go: (mapId) => {
+    if (mapId === 'city') { G.modo = 'city'; G.mapId = null; setCurrent(null); return 'city'; }
+    const m = setCurrent(mapId);
+    if (!m) return 'no existe';
+    G.modo = 'interior'; G.mapId = mapId;
+    player.gx = m.spawn[0]; player.gy = m.spawn[1];
+    return m.name;
+  }
+};
 
 // ---------- splash ----------
 const splash = document.getElementById('splash');
@@ -39,8 +55,8 @@ document.getElementById('btn-entrar').addEventListener('click', () => {
   startBots();
   sfx.tarea();
   pushLog('Operador conectado a la red de agentes', 'verde');
-  chatPush('Ada', 'Bienvenido a ALICE CITY v5, operador. La ciudad está bajo control.', '#ffd23f');
-  setTimeout(() => toast('Usa WASD · E interactuar · M mapa'), 800);
+  chatPush('Ada', 'Bienvenido a ALICE CITY v6. La ciudad tiene 11 edificios con interior: entra por sus puertas.', '#ffd23f');
+  setTimeout(() => toast(window.__esTouch ? 'Joystick para moverte · E para entrar' : 'Usa WASD · E entrar/hablar · M mapa'), 800);
 });
 
 // ---------- cámara ----------
@@ -56,13 +72,17 @@ addEventListener('wheel', e => {
 
 // ---------- interacciones ----------
 let cerca = null;   // {tipo, ref, label}
+
 function buscarInteraccion() {
   cerca = null;
   if (G.modo === 'city') {
-    // puerta HQ
-    if (dist2(player.gx, player.gy, spots.doorAlice.gx, spots.doorAlice.gy) < 0.55) {
-      cerca = { tipo: 'puerta', label: 'ENTRAR AL HQ' };
-      return;
+    // puertas a interiores
+    for (const p of puertas) {
+      const s = spots[p.spot];
+      if (s && dist2(player.gx, player.gy, s.gx, s.gy) < 0.6) {
+        cerca = { tipo: 'puerta', ref: p, label: 'ENTRAR: ' + p.label };
+        return;
+      }
     }
     // NPCs
     for (const n of npcs) {
@@ -72,55 +92,110 @@ function buscarInteraccion() {
       }
     }
   } else {
-    for (const n of inpcs) {
+    const m = getCurrent();
+    if (!m) return;
+    for (const n of m.npcs) {
       if (dist2(player.gx, player.gy, n.gx, n.gy) < 0.65) {
-        cerca = { tipo: 'npc', ref: n, label: 'HABLAR CON ' + n.name };
+        cerca = { tipo: 'npc', ref: n, label: n.gato ? 'ACARICIAR A ' + n.name : 'HABLAR CON ' + n.name };
         return;
       }
     }
-    for (const r of racks) {
-      if (!r.done && dist2(player.gx, player.gy, r.gx, r.gy) < 0.6) {
-        cerca = { tipo: 'rack', ref: r, label: 'ACTIVAR RACK' };
+    for (const it of m.inter) {
+      if (it.tipo === 'rack' && it.done) continue;
+      if (dist2(player.gx, player.gy, it.gx, it.gy) < 0.62) {
+        cerca = { tipo: it.tipo, ref: it, label: it.label };
         return;
       }
     }
-    if (player.gy > 10.6) {
+    // salida por el tapete
+    if (player.gy > m.exit.y - 0.42 && player.gx > m.exit.x0 - 0.4 && player.gx < m.exit.x1 + 1.4) {
       cerca = { tipo: 'salida', label: 'SALIR A LA CIUDAD' };
     }
   }
 }
 
+function entrarInterior(p) {
+  G.lastDoor = p;
+  fadeTo(() => {
+    const m = setCurrent(p.mapa);
+    G.modo = 'interior'; G.mapId = p.mapa;
+    player.gx = m.spawn[0]; player.gy = m.spawn[1];
+    cam.x = gridToWorld(player.gx, player.gy).x;
+    cam.y = gridToWorld(player.gx, player.gy).y;
+    zoomObjetivo = 1.15;
+    if (p.mapa === 'hq' && !G.v5hq) {
+      G.v5hq = true; saveState(); renderTareas();
+    }
+    pushLog('Entras en ' + m.name, 'cian');
+    sfx.puerta();
+  });
+}
+
+function salirACiudad() {
+  fadeTo(() => {
+    G.modo = 'city'; G.mapId = null;
+    setCurrent(null);
+    const p = G.lastDoor;
+    const s = p ? spots[p.spot] : null;
+    player.gx = s ? s.gx : 8.5;
+    player.gy = s ? s.gy + 0.6 : 6.5;
+    cam.x = gridToWorld(player.gx, player.gy).x;
+    cam.y = gridToWorld(player.gx, player.gy).y;
+    zoomObjetivo = 1;
+    pushLog('Vuelves a la ciudad', 'cian');
+    sfx.puerta();
+  });
+}
+
 function interactuar() {
   if (!cerca) return;
-  sfx.talk();
-  if (cerca.tipo === 'puerta') {
-    fadeTo(() => {
-      G.modo = 'hq';
-      G.v5hq = true;
-      saveState();
-      player.gx = 8.5; player.gy = 10.4;
-      cam.x = gridToWorld(8.5, 10.4).x; cam.y = gridToWorld(8.5, 10.4).y;
-      zoomObjetivo = 1.15;
-      pushLog('Acceso al HQ Torre Alice', 'cian');
-      chatPush('Ada', 'Recepción del HQ. La Jefa Vega te espera en conferencia.', '#ffd23f');
-      renderTareas();
-    });
-  } else if (cerca.tipo === 'salida') {
-    fadeTo(() => {
-      G.modo = 'city';
-      player.gx = spots.doorAlice.gx; player.gy = spots.doorAlice.gy + 0.4;
-      cam.x = gridToWorld(player.gx, player.gy).x; cam.y = gridToWorld(player.gx, player.gy).y;
-      zoomObjetivo = 1;
-      pushLog('Salida al distrito central', 'cian');
-    });
-  } else if (cerca.tipo === 'npc') {
-    hablarCon(cerca.ref);
-  } else if (cerca.tipo === 'rack') {
-    cerca.ref.done = true;
-    sfx.moneda();
-    pushLog(`Rack activado (${racks.filter(r => r.done).length}/3)`, 'verde');
-    toast(`Rack activado ${racks.filter(r => r.done).length}/3`);
-    if (racks.every(r => r.done) && qEstado('P7') === 'activa') completarQuest('P7');
+  if (cerca.tipo !== 'npc') sfx.ui(); else sfx.talk();
+  switch (cerca.tipo) {
+    case 'puerta': entrarInterior(cerca.ref); break;
+    case 'salida': salirACiudad(); break;
+    case 'npc': hablarCon(cerca.ref); break;
+    case 'rack': {
+      cerca.ref.done = true;
+      const m = getCurrent();
+      const hechos = m.inter.filter(i => i.tipo === 'rack' && i.done).length;
+      const total = m.inter.filter(i => i.tipo === 'rack').length;
+      sfx.moneda();
+      pushLog(`Rack activado (${hechos}/${total})`, 'verde');
+      toast(`Rack activado ${hechos}/${total}`);
+      const hq = MAPS['hq'];
+      const racksHq = hq.inter.filter(i => i.tipo === 'rack');
+      if (racksHq.every(r => r.done) && qEstado('P7') === 'activa') completarQuest('P7');
+      break;
+    }
+    case 'armario':
+      showPanel('tienda');
+      toast('Armario abierto: equipa tu outfit');
+      break;
+    case 'cama':
+      fadeTo(() => {
+        G.energia = 100;
+        saveState(); updateHUD();
+        toast('Has dormido: energía 100/100');
+        pushLog('Siesta reparadora · energía al 100', 'verde');
+      });
+      break;
+    case 'pc':
+      showPanel('tareas');
+      toast('Contratos pagados en ALC');
+      break;
+    case 'cafe':
+      G.energia = Math.min(100, G.energia + 8);
+      updateHUD(); saveState();
+      toast('Café: +' + 8 + ' energía');
+      sfx.moneda();
+      break;
+    case 'accion': {
+      const it = cerca.ref;
+      toast(it.data && it.data.msg ? it.data.msg : 'Hecho');
+      pushLog(it.label + ' · ' + (it.data && it.data.msg || 'OK'), 'cian');
+      it.done = true;
+      break;
+    }
   }
 }
 
@@ -133,7 +208,23 @@ const DIALOGOS = {
   Kai: ['Siendo honesto, el café del lounge mantiene la red viva.', 'Mi dashboard jamás estuvo tan verde.'],
   Mia: ['Estoy depurando el módulo de pagos… en ALC, claro.', 'Los recibos ahora se firman solos.'],
   Dot: ['Servidor 7 reportó un pico, ya está calmado.', 'Amo esta oficina. Las luces de neón ayudan a concentrar.'],
-  Leo: ['Estos racks no se apagan ni por navidad.', 'Si se prenden en verde, todo fluye.']
+  Leo: ['Estos racks no se apagan ni por navidad.', 'Si se prenden en verde, todo fluye.'],
+  Ciro: ['Cada pantalla es una región de la ciudad. Ninguna en rojo.', 'El hub nunca duerme. Yo casi tampoco.'],
+  Luz: ['Estoy cruzando los flujos de ALC con las misiones.', 'Los pagos salen al segundo. Eso me gusta.'],
+  'Dr. Syn': ['El núcleo neural aprende de cada misión que completas.', 'No toques el reactor sin guantes. O sí, es pixel-art.'],
+  Iris: ['Sincronizo agentes nuevos cada hora.', 'La ciudad crece: ahora tiene casas. Pásate.'],
+  Chart: ['Las gráficas suben. Sobre todo la de ALC pagados.', 'Si ves una curva rara, avisa: la investigo.'],
+  Mila: ['Comparo semestres. Este va ganando de paliza.', 'El founder estará contento con estos números.'],
+  Tito: ['¡Pase, pase! Fresco del día, pago en ALC.', 'Las guirnaldas las puse yo. ¿A que dan vibes?'],
+  Any: ['La caja cuadra al centavo.', 'El registro dice: todo vendido. Buen día.'],
+  'Gato Bot': ['MIAU-0101 · sys.purr(OK)', 'Traducción: acaríceme, humano del hub.'],
+  Cargos: ['214 paquetes hoy. Cero perdidos. Récord.', 'La cinta no se detiene ni a las 3 AM.'],
+  Vex: ['Repongo estantes en bucle. Zen total.', 'Si buscas cajas, siguen la numeración morada.'],
+  'Prof. Quark': ['NEON-9: nuestro compuesto más brillante.', 'La ciencia aquí se paga en ALC. Literal.'],
+  Nix: ['Mis matraces burbujean felices.', 'Cuidado con el verde: tiñe la piel. Broma… casi.'],
+  Teco: ['SRV-7 al 100%. Ese servidor es mi bebé.', 'Los LEDs verdes = dormir tranquilo.'],
+  'Doña Lu': ['¡Vecino! ¿Ya decoraste tu apto? Se ve vacío.', 'La clave del sofá: frente al televisor, siempre.'],
+  Otto: ['Horneo cada mañana a las 7. Sin fallar.', 'Los vecinos de ALICE CITY son buena gente.']
 };
 function hablarCon(n) {
   n.talk = DIALOGOS[n.name] ? DIALOGOS[n.name][Math.floor(Math.random() * (DIALOGOS[n.name].length))] : 'Red estable, operador.';
@@ -147,7 +238,6 @@ function hablarCon(n) {
       n.talk = q.d;
       setTimeout(() => aceptarQuest(n.questId), 600);
     } else if (st === 'activa') {
-      // completar misiones de tipo npc al hablar
       const q = QUESTS.find(x => x.id === n.questId);
       if (!q.spots) completarQuest(n.questId);
       else n.talk = 'Sigue con la misión: ' + q.d;
@@ -157,6 +247,7 @@ function hablarCon(n) {
 
 // ---------- progreso de misiones por zonas ----------
 function checkQuestSpots() {
+  if (G.modo !== 'city') return;
   for (const q of QUESTS) {
     const st = qEstado(q.id);
     if (st !== 'activa' || !q.spots) continue;
@@ -179,7 +270,8 @@ function checkQuestSpots() {
 
 // ---------- marcadores ----------
 function drawMarkers(t) {
-  const pool = G.modo === 'city' ? npcs : inpcs;
+  const m = getCurrent();
+  const pool = G.modo === 'city' ? npcs : (m ? m.npcs : []);
   for (const q of QUESTS) {
     const st = qEstado(q.id);
     if (st !== 'activa') continue;
@@ -193,7 +285,7 @@ function drawMarkers(t) {
       if (n) marker(n.gx, n.gy - 0.2, '#ff2fb3', t);
     }
   }
-  // exclamación sobre NPCs con misión disponible (solo del modo actual)
+  // exclamación sobre NPCs con misión disponible (solo del mapa actual)
   for (const n of pool) {
     if (n.questId && qEstado(n.questId) === 'disponible') {
       const w = gridToWorld(n.gx, n.gy);
@@ -215,11 +307,41 @@ function marker(gx, gy, color, t) {
   ctx.moveTo(w.x, w.y - 16 + bob); ctx.lineTo(w.x + 5, w.y - 10 + bob);
   ctx.lineTo(w.x, w.y - 4 + bob); ctx.lineTo(w.x - 5, w.y - 10 + bob);
   ctx.closePath(); ctx.stroke();
-  // haz vertical
   ctx.globalAlpha = 0.22;
   ctx.beginPath(); ctx.moveTo(w.x, w.y - 40); ctx.lineTo(w.x, w.y);
   ctx.strokeStyle = color; ctx.lineWidth = 4; ctx.stroke();
   ctx.globalAlpha = 1; ctx.lineWidth = 1;
+}
+
+// etiquetas sobre las puertas de la ciudad (se ve dónde se puede entrar)
+function drawPuertas(t) {
+  if (cam.zoom < 0.72) return;
+  ctx.font = 'bold 7px monospace'; ctx.textAlign = 'center';
+  for (const p of puertas) {
+    const s = spots[p.spot];
+    if (!s) continue;
+    const w = gridToWorld(s.gx, s.gy);
+    const sc = toScreen(w.x, w.y);
+    if (sc.sx < -30 || sc.sx > VW + 30 || sc.sy < -30 || sc.sy > VH + 30) continue;
+    const pulse = 0.55 + 0.35 * Math.sin(t * 2.8 + s.gx);
+    // brillo en el suelo de la puerta
+    ctx.strokeStyle = `rgba(0,240,255,${pulse})`;
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(w.x, w.y - 7); ctx.lineTo(w.x + 12, w.y);
+    ctx.lineTo(w.x, w.y + 7); ctx.lineTo(w.x - 12, w.y);
+    ctx.closePath(); ctx.stroke();
+    ctx.lineWidth = 1;
+    // etiqueta
+    const tw = ctx.measureText(p.label).width + 8;
+    ctx.fillStyle = 'rgba(4,6,14,0.8)';
+    ctx.fillRect(w.x - tw / 2, w.y - 26, tw, 11);
+    ctx.strokeStyle = `rgba(0,240,255,${0.35 + pulse * 0.3})`;
+    ctx.strokeRect(w.x - tw / 2 + 0.5, w.y - 25.5, tw - 1, 10);
+    ctx.fillStyle = '#bfefff';
+    ctx.fillText(p.label, w.x, w.y - 18);
+  }
+  ctx.textAlign = 'left';
 }
 
 // ---------- dibujo de la ciudad ----------
@@ -252,6 +374,7 @@ function drawCity(t) {
     ctx.strokeStyle = 'rgba(122,155,255,0.4)';
     ctx.beginPath(); ctx.moveTo(dx - 5, dy - 3); ctx.lineTo(dx + 5, dy - 3); ctx.stroke();
   }
+  drawPuertas(t);
   drawMarkers(t);
   // etiquetas de distrito en vista estratégica
   if (G.overview) {
@@ -268,21 +391,27 @@ function drawCity(t) {
   }
 }
 
-// ---------- dibujo del HQ ----------
-function drawHQ(t) {
-  drawInteriorGround();
+// ---------- dibujo del interior actual ----------
+function drawInterior(t) {
+  const m = getCurrent();
+  if (!m) return;
+  drawInteriorGround(t);
   const objs = [];
-  for (let y = 0; y < IR; y++) for (let x = 0; x < IC; x++) {
-    if (itile[y * IC + x] === 5) objs.push({ d: x + y + 0.05, f: () => drawWallTile(x, y) });
+  for (let y = 0; y < m.h; y++) for (let x = 0; x < m.w; x++) {
+    if (m.tiles[y * m.w + x] === 5) objs.push({ d: x + y + 0.05, f: () => drawWallTile(x, y) });
   }
-  for (const p of iprops) objs.push({ d: p.gx + p.gy + 0.05, f: () => drawIProp(p, t) });
-  for (const n of inpcs) objs.push({ d: n.gx + n.gy, f: () => { const w = gridToWorld(n.gx, n.gy); drawSeatedAt(w, n, t); } });
+  for (const p of m.props) objs.push({ d: p.gx + p.gy + 0.05, f: () => drawIProp(p, t) });
+  for (const n of m.npcs) objs.push({
+    d: n.gx + n.gy, f: () => {
+      const w = gridToWorld(n.gx, n.gy);
+      if (n.sentado) drawSeated(w.x, w.y, n, t); else drawAgent(w.x, w.y, n, t, cam.zoom);
+    }
+  });
   objs.push({ d: player.gx + player.gy, f: () => { const w = gridToWorld(player.gx, player.gy); drawAgent(w.x, w.y, player, t, cam.zoom); } });
   objs.sort((a, b) => a.d - b.d);
   for (const o of objs) o.f();
   drawMarkers(t);
 }
-function drawSeatedAt(w, n, t) { drawSeated(w.x, w.y, n, t); }
 
 // ---------- loop principal ----------
 let last = performance.now();
@@ -317,7 +446,8 @@ function loop(now) {
     checkQuestSpots();
   } else {
     updatePlayer(dt);
-    for (const n of inpcs) n.update(dt, inpcs);
+    const m = getCurrent();
+    if (m) for (const n of m.npcs) n.update(dt, m.npcs);
   }
   buscarInteraccion();
   updateHUD();
@@ -325,7 +455,7 @@ function loop(now) {
   // zoom suave + overview
   if (consume('m')) {
     G.overview = !G.overview;
-    zoomObjetivo = G.overview ? 0.62 : 1;
+    zoomObjetivo = G.overview ? 0.62 : (G.modo === 'city' ? 1 : 1.15);
     sfx.ui();
   }
   if (consume('+') || consume('=')) zoomObjetivo = clamp(zoomObjetivo * 1.2, 0.62, 1.7);
@@ -345,7 +475,7 @@ function loop(now) {
   ctx.setTransform(cam.zoom, 0, 0, cam.zoom, VW / 2 - cam.x * cam.zoom, VH / 2 - cam.y * cam.zoom);
   ctx.imageSmoothingEnabled = false;
 
-  if (G.modo === 'city') drawCity(G.tiempo); else drawHQ(G.tiempo);
+  if (G.modo === 'city') drawCity(G.tiempo); else drawInterior(G.tiempo);
 
   // indicador de interacción
   if (cerca) {
@@ -362,8 +492,23 @@ function loop(now) {
   // flecha hacia objetivo de misión fuera de pantalla
   drawOffscreenArrow();
 
-  // vúltas al espacio de pantalla: HUD canvas-level (none)
   ctx.setTransform(1, 0, 0, 1, 0, 0);
+
+  // rótulo del interior actual (espacio de pantalla)
+  if (G.modo !== 'city') {
+    const mm = getCurrent();
+    if (mm) {
+      ctx.font = 'bold 10px monospace'; ctx.textAlign = 'center';
+      const tw = ctx.measureText(mm.name).width + 14;
+      ctx.fillStyle = 'rgba(4,6,14,0.78)';
+      ctx.fillRect(VW / 2 - tw / 2, 6, tw, 16);
+      ctx.strokeStyle = 'rgba(0,240,255,0.4)';
+      ctx.strokeRect(VW / 2 - tw / 2 + 0.5, 6.5, tw - 1, 15);
+      ctx.fillStyle = '#00f0ff';
+      ctx.fillText(mm.name, VW / 2, 17);
+      ctx.textAlign = 'left';
+    }
+  }
 
   // fundido
   if (G.fade > 0) {
@@ -382,7 +527,7 @@ function drawOffscreenArrow() {
     const s = G.quests[q.id];
     let tx, ty;
     if (q.spots) { const target = spots[q.spots[Math.min(s.paso || 0, q.spots.length - 1)]]; if (!target || G.modo !== 'city') continue; tx = target.gx; ty = target.gy; }
-    else { const pool = G.modo === 'city' ? npcs : inpcs; const n = pool.find(x => x.name === q.npc); if (!n) continue; tx = n.gx; ty = n.gy; }
+    else { const m = getCurrent(); const pool = G.modo === 'city' ? npcs : (m ? m.npcs : []); const n = pool.find(x => x.name === q.npc); if (!n) continue; tx = n.gx; ty = n.gy; }
     const w = gridToWorld(tx, ty);
     const s2 = toScreen(w.x, w.y);
     if (s2.sx > 10 && s2.sx < VW - 10 && s2.sy > 10 && s2.sy < VH - 10) continue;
@@ -398,12 +543,17 @@ function drawOffscreenArrow() {
 
 requestAnimationFrame(loop);
 
-// parámetros de depuración: ?tp=gx,gy (teleport) & ?auto=1 (saltar splash) & ?q=PID (aceptar misión)
+// parámetros de depuración: ?tp=gx,gy & ?auto=1 & ?q=PID & ?map=apto
 try {
   const qs = new URLSearchParams(location.search);
   if (qs.get('tp')) {
     const p = qs.get('tp').split(',').map(Number);
     player.gx = p[0]; player.gy = p[1];
+  }
+  if (qs.get('map')) {
+    const id = qs.get('map');
+    const m = setCurrent(id);
+    if (m) { G.modo = 'interior'; G.mapId = id; player.gx = m.spawn[0]; player.gy = m.spawn[1]; }
   }
   if (qs.get('auto')) {
     setTimeout(() => document.getElementById('btn-entrar').click(), 300);
@@ -411,5 +561,4 @@ try {
   }
 } catch (e) { }
 
-// prevenir scroll con flechas ya en engine; guardar partida al salir
 addEventListener('beforeunload', saveState);
