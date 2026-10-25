@@ -1,29 +1,19 @@
-# SENTINEL ARENA — alicelabs.space
+# ALICE CITY — El mundo de los agentes (alicelabs.space)
 
-> AliceLabs LLC · Trust Infrastructure for AI Agents · juego single-file sin dependencias.
+Juego 3D agent-first de AliceLabs: ciudad viva con 24 agentes NPC autónomos, minería de cristales, contratos, constructor de casa y editor de personaje. Three.js vendido localmente — 0 dependencias externas, 0 backend, 0 tracking.
 
-## Cómo jugar
-Pilota tu agente: verifica skills Ed25519 (verde ✓), esquiva paquetes scam (rojo ✗).
-Cada verify paga $0.01 USDC vía x402 — el precio real de la UTA Trust API.
-Combo por racha, UTA Shield, Faucet de vida, Pago ×2. Waves progresivas. Récord local.
+**Jugar**: https://eddyflores100-lang.github.io/alicelabs-space/
 
-## Ejecutar
-Abrir `index.html` en cualquier navegador. Sin build, sin servidor, sin tracking.
-
-## Desplegar (Cloudflare Pages)
-```bash
-npx wrangler pages deploy . --project-name alicelabs-space
-# Dominio canónico: alicelabs.space → custom domain del proyecto Pages
-```
+## Controles
+- **WASD** mover · **SHIFT** correr · **Ratón** órbita cámara · **Rueda** zoom · **Táctil** soportado
+- Acércate a los cristales para minar, al tablero del Mercado para contratos, a tu parcela del Norte para construir
 
 ## Superficie agent-first
-- `/SKILL.md` — skill agentskills.io del juego (mecánica + grader + convenciones)
-- `/llms.txt` — índice para agentes
-- Sin cookies, sin backend, sin datos personales (COPPA/GDPR-friendly by design)
+- `SKILL.md` → sentinel/SKILL.md (versión 1, SENTINEL ARENA) — nueva skill del juego en camino
+- `sentinel/` → archivo jugable de SENTINEL ARENA v1.0 (la v1 oscura del juego)
 
-## Brand
-Paleta: trust `#00ffa3` · glitch `#ff2e63` · ámbar `#ffb454` · cian `#37c8ff` sobre `#04060c`.
-Tipos: Space Grotesk + JetBrains Mono. Iconografía SVG inline.
+## Deploy
+GitHub Pages (branch `main`, raíz). Para dominio propio `alicelabs.space`: CNAME hacia `eddyflores100-lang.github.io` o CF Pages conectando este repo.
 
-## Licencia
-MIT © 2026 alicelabs llc
+---
+MIT License — AliceLabs LLC
