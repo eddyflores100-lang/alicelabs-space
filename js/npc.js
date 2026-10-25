@@ -18,6 +18,58 @@ export const ETIQUETAS_ESTADO = {
   ir: '🚶 Caminando…',
 };
 
+// ---------- diálogos por rol (y genéricos) ----------
+const DIALOGOS = {
+  minero: [
+    'Los cristales más ricos están al fondo de la mina.',
+    'Miné 12 cristales hoy. Mi dueño está orgulloso.',
+    'Si el ánimo está alto, minas el doble. Ponte a descansar.',
+  ],
+  constructor: [
+    'Tu parcela del norte está esperando una casa bonita.',
+    'Con mi rol, construyes 30% más barato.',
+    'Un día estas casas se pagarán con Alicoins de verdad.',
+  ],
+  corredor: [
+    'Corro por toda la ciudad… ¡hasta la Torre Alice!',
+    '¿Has visto el lago? Los veleros nunca se cansan.',
+    'Cada distrito esconde algo. Explora, agente.',
+  ],
+  cocinero: [
+    'Los contratos del mercado son pan comido… ¡y pizza!',
+    'Mi dueño dice que pronto cobraremos en Solana. ¿Solana?',
+    'Trabajar para AliceLabs tiene sus ventajas.',
+  ],
+  artista: [
+    'Pinté el atardecer del lago. Salieron Alicoins dorados.',
+    'La ciudad es mi lienzo, agente.',
+    'Dicen que hay luciérnagas en el bosque del norte.',
+  ],
+  generico: [
+    '¡Bienvenido a ALICE CITY, agente!',
+    'Dicen que la Torre Alice toca el cielo.',
+    'Completa tareas y gana Alicoins 🪙',
+    'Pronto pagaremos todo con Alicoins reales.',
+    '¿Ya decoraste tu avatar? Yo tengo sombrero nuevo.',
+  ],
+};
+
+// burbuja de diálogo sobre la cabeza
+function crearBurbuja(texto) {
+  const c = document.createElement('canvas'); c.width = 512; c.height = 128;
+  const g = c.getContext('2d');
+  g.fillStyle = 'rgba(10,20,26,.88)';
+  g.beginPath(); g.roundRect(8, 10, 496, 84, 22); g.fill();
+  g.beginPath(); g.moveTo(230, 94); g.lineTo(256, 122); g.lineTo(282, 94); g.closePath(); g.fill();
+  g.fillStyle = '#fff'; g.font = '700 30px "Segoe UI", sans-serif';
+  g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.fillText(texto.slice(0, 46), 256, 53);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: t, depthTest: false, transparent: true }));
+  s.scale.set(3.4, .85, 1); s.renderOrder = 30;
+  return s;
+}
+
 // ---------- coche ----------
 function crearCoche(color) {
   const g = new THREE.Group();
@@ -67,9 +119,14 @@ export function crearNPCs(escena, mundo) {
   const callePt = () => elegir([
     new THREE.Vector3(rnd(-95, 95), 0, rnd(6, 8) * (Math.random() < .5 ? 1 : -1)),
     new THREE.Vector3(rnd(6, 8) * (Math.random() < .5 ? 1 : -1), 0, rnd(-95, 95)),
+    new THREE.Vector3(75 + rnd(-4, 4), 0, rnd(-95, 95)),      // avenida este
+    new THREE.Vector3(rnd(-95, 95), 0, 75 + rnd(-4, 4)),      // avenida sur (lago)
+    new THREE.Vector3(-75 + rnd(-4, 4), 0, rnd(-95, 95)),     // avenida oeste
   ]);
+  const downtonPt = () => { const a = rnd(0, 6.28), r = rnd(4, 14); return new THREE.Vector3(75 + Math.cos(a) * r, 0, -75 + Math.sin(a) * r); };
+  const lagoPt = () => { const a = rnd(0, 6.28), r = rnd(27, 33); return new THREE.Vector3(-75 + Math.cos(a) * r, 0, 75 + Math.sin(a) * r); };
 
-  const tipos = ['pasear', 'pasear', 'minar', 'trabajar', 'relajar'];
+  const tipos = ['pasear', 'pasear', 'minar', 'trabajar', 'relajar', 'visitar'];
   for (let i = 0; i < 24; i++) {
     const tipoBase = tipos[i % tipos.length];
     const cfg = personajeAleatorio();
@@ -90,6 +147,18 @@ export function crearNPCs(escena, mundo) {
       target: plazaPt(), timer: rnd(0, 3), velocidad: rnd(2.1, 2.9), 
       recuento: 0, sentado: null,
       etiqueta() { return ETIQUETAS_ESTADO[this.estado === 'ir' ? 'pasear' : this.estado] || '🚶'; },
+      hablar() {
+        const banco = [...(DIALOGOS[cfg.rol] || []), ...DIALOGOS.generico];
+        const linea = banco[(Math.random() * banco.length) | 0];
+        if (npc.burbuja) pj.grupo.remove(npc.burbuja);
+        npc.burbuja = crearBurbuja(linea);
+        npc.burbuja.position.y = 2.5;
+        pj.grupo.add(npc.burbuja);
+        setTimeout(() => {
+          if (npc.burbuja) { pj.grupo.remove(npc.burbuja); npc.burbuja = null; }
+        }, 3600);
+        return linea;
+      },
     };
     npcs.push(npc);
   }
@@ -102,6 +171,7 @@ export function crearNPCs(escena, mundo) {
       case 'minar': npc.target = minaPt(); npc.recuento = 1 + (Math.random() * 3 | 0); break;
       case 'trabajar': npc.target = mercPt(); npc.recuento = 1; break;
       case 'relajar': npc.target = elegir(bancos).clone(); npc.recuento = 1; break;
+      case 'visitar': npc.target = Math.random() < .5 ? downtonPt() : lagoPt(); npc.recuento = 1; break;
       default: npc.target = Math.random() < .6 ? plazaPt() : callePt();
     }
   }
@@ -121,6 +191,9 @@ export function crearNPCs(escena, mundo) {
             pj.setEstado('sit');
             pj.grupo.position.set(npc.target.x, 0, npc.target.z + .12);
             pj.grupo.rotation.y = Math.atan2(-npc.target.z, -npc.target.x) + PIE;
+            continue;
+          } else if (npc.tipo === 'visitar' && npc.recuento > 0) {
+            npc.estado = 'relajar'; npc.timer = rnd(4, 8); // contempla el lago o la torre
             continue;
           } else { npc.tipo = elegir(tipos); nuevoObjetivo(npc); }
         } else {

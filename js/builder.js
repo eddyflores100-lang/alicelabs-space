@@ -1,6 +1,7 @@
 // ============ ALICE CITY — Constructor de casa en tu parcela ============
 import * as THREE from 'three';
 import { crearArbol, crearFarola } from './world.js';
+import { emitir } from './eventos.js';
 
 const PIE = Math.PI;
 
@@ -130,6 +131,7 @@ export function crearConstructor(escena, parcela, eco) {
     escena.add(mesh);
     estado.piezas.push({ id: it.id, gx, gz, rot: estado.rot, nivel, mesh });
     eco.ui.sonido('colocar');
+    emitir('construir', it.id);
     comprobarCasa();
     return true;
   }

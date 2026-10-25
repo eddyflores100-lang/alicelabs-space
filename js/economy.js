@@ -1,7 +1,9 @@
-// ============ ALICE CITY — Economía: minado, contratos, monedas ============
+// ============ ALICE CITY — Economía: minado, contratos, Alicoins ============
 import * as THREE from 'three';
 import { crearCristal } from './world.js';
 import { ROLES } from './characters.js';
+import { billetera } from './wallet.js';
+import { emitir } from './eventos.js';
 
 const rnd = (a, b) => a + Math.random() * (b - a);
 
@@ -44,13 +46,14 @@ const DEST_POS = {
   tablero: new THREE.Vector3(65.5, 0, 0),
 };
 
-export function crearEconomia(escena, mundo, jugador, ui) {
+export function crearEconomia(escena, mundo, jugador, ui, npcs = null) {
   const estado = {
-    monedas: 0, animo: 100,
+    animo: 100,
     contrato: null,        // {def, progreso, destino}
     contratosHechos: 0,
     minadosTotal: 0,
     cerca: null,           // {tipo, ref, pos}
+    get monedas() { return billetera.balance; },
   };
 
   // ----- cristales minables -----
@@ -84,8 +87,8 @@ export function crearEconomia(escena, mundo, jugador, ui) {
     if (bonusRol() === 'mina' && motivo === 'mina') total = Math.round(n * 1.5);
     if (bonusRol() === 'contratos' && motivo === 'contrato') total = Math.round(n * 1.4);
     if (estado.animo >= 85 && motivo === 'mina') total = Math.round(total * 1.25);
-    estado.monedas += total;
-    if (pos) textoFlotante(escena, pos.clone().add(new THREE.Vector3(0, 1.8, 0)), `+${total} 💰`);
+    billetera.ganar(total, motivo === 'contrato' ? 'Contrato' : motivo === 'mina' ? 'Minado' : motivo);
+    if (pos) textoFlotante(escena, pos.clone().add(new THREE.Vector3(0, 1.8, 0)), `+${total} ALC`);
     ui.actualizarHUD(estado);
     return total;
   }
@@ -109,7 +112,8 @@ export function crearEconomia(escena, mundo, jugador, ui) {
     estado.contrato = null; marcador.visible = false;
     estado.contratosHechos++;
     ganar(def.premio, jugador.personaje.grupo.position, 'contrato');
-    ui.toast(`✅ ¡Contrato completado! +${def.premio} monedas`, 'verde');
+    emitir('contrato', def.id);
+    ui.toast(`✅ ¡Contrato completado! +${def.premio} ALC`, 'verde');
     ui.pintarContratos(api, contratosDisponibles());
     ui.actualizarHUD(estado);
   }
@@ -122,6 +126,7 @@ export function crearEconomia(escena, mundo, jugador, ui) {
       ref.vivo = false; ref.respawn = rnd(16, 26);
       ref.mesh.scale.setScalar(.01);
       estado.minadosTotal++;
+      emitir('minar', 1);
       if (estado.contrato && estado.contrato.def.tipo === 'minar') {
         estado.contrato.progreso++;
         if (estado.contrato.progreso >= estado.contrato.def.cantidad) completarContrato();
@@ -138,12 +143,17 @@ export function crearEconomia(escena, mundo, jugador, ui) {
       jugador.personaje.grupo.rotation.y = Math.atan2(-b.x, -b.z);
       jugador.personaje.setEstado('sit');
       estado.relajando = true;
+      emitir('relax', 1);
       ui.toast('😎 Relajando… el ánimo sube. Muévete para levantarte', 'cian');
     }
     if (tipo === 'contrato' && estado.contrato) {
       const d = estado.contrato.def;
       if (d.tipo === 'minar') { ui.toast(`⛏️ Te faltan ${d.cantidad - estado.contrato.progreso} cristales`, 'cian'); return; }
       completarContrato();
+    }
+    if (tipo === 'npc' && ref?.hablar) {
+      ref.hablar();
+      emitir('dialogo', ref.nombre);
     }
   }
 
@@ -166,9 +176,16 @@ export function crearEconomia(escena, mundo, jugador, ui) {
       const pos = DEST_POS[estado.contrato.def.dest];
       if (pos && Math.hypot(pos.x - p.x, pos.z - p.z) < 3) mejor = { tipo: 'contrato', pos };
     }
+    if (!mejor && npcs) {
+      for (const n of npcs.npcs) {
+        const d = n.pj.grupo.position.distanceTo(p);
+        if (d < 2.6) { mejor = { tipo: 'npc', ref: n, pos: n.pj.grupo.position }; break; }
+      }
+    }
     estado.cerca = mejor;
     ui.mostrarPrompt(mejor ? {
       cristal: 'Minar cristal', banco: 'Sentarse a relajar', contrato: 'Completar contrato',
+      npc: `Hablar con ${mejor.ref?.nombre || 'el agente'}`,
     }[mejor.tipo] : null);
   }
 
@@ -214,14 +231,13 @@ export function crearEconomia(escena, mundo, jugador, ui) {
     detectarCercania();
   }
 
-  function gastar(n) {
-    if (estado.monedas < n) return false;
-    estado.monedas -= n;
+  function gastar(n, motivo = 'tienda') {
+    const ok = billetera.gastar(n, motivo);
     ui.actualizarHUD(estado);
-    return true;
+    return ok;
   }
   function reembolsar(n) {
-    estado.monedas += n;
+    billetera.ganar(n, 'Reembolso de obra');
     ui.actualizarHUD(estado);
   }
   const bonusObra = () => bonusRol() === 'obra';

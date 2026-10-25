@@ -1,7 +1,8 @@
-// ============ ALICE CITY — UI: lobby, HUD, paneles, editor ============
+// ============ ALICE CITY — UI: lobby, HUD, paneles, editor, tienda ============
 import * as THREE from 'three';
-import { ROLES, PIEL, CAMISETAS, PANTALONES, PELOS, PELO_ESTILOS, crearPersonaje, personajeAleatorio } from './characters.js';
+import { ROLES, PIEL, CAMISETAS, PANTALONES, PELOS, PELO_ESTILOS, TIENDA, crearPersonaje, personajeAleatorio } from './characters.js';
 import { ETIQUETAS_ESTADO } from './npc.js';
+import { billetera } from './wallet.js';
 import { sfx } from './sfx.js';
 
 const $ = (id) => document.getElementById(id);
@@ -28,8 +29,10 @@ export function crearUI() {
   function irALobby() {
     mostrar('lobby'); mostrar('hud', false); mostrar('builder-ui', false);
     mostrar('panel-agentes', false); mostrar('panel-contratos', false);
+    mostrar('panel-tareas', false); mostrar('panel-billetera', false);
     mostrar('menu', false); mostrar('como', false); mostrar('editor', false);
     $('lobby-monedas').textContent = fmt(estado.monedasJuego || 0);
+    if (estado.onRefrescoLobby) estado.onRefrescoLobby();
   }
   function irAJuego() {
     mostrar('lobby', false); mostrar('hud'); sfx.pop();
@@ -42,14 +45,61 @@ export function crearUI() {
     $('hud-animo').textContent = Math.round(eco.animo);
     $('lobby-monedas').textContent = fmt(eco.monedas);
     $('builder-monedas').textContent = fmt(eco.monedas);
+    $('wal-saldo').textContent = fmt(billetera.balance);
     const badge = $('hud-badge');
     if (eco.contrato) { badge.textContent = '1'; badge.classList.add('on'); }
     else badge.classList.remove('on');
+    if (estado.onRefrescoLobby) estado.onRefrescoLobby();
   }
   function setZona(txt) { $('hud-zona').textContent = '📍 ' + txt; }
   function mostrarPrompt(txt) {
     if (!txt) { mostrar('prompt', false); return; }
     $('prompt-texto').textContent = txt; mostrar('prompt');
+  }
+
+  // ---------- panel tareas ----------
+  function pintarTareas(tareasApi) {
+    const lista = $('lista-tareas');
+    lista.innerHTML = '';
+    for (const t of tareasApi.TAREAS) {
+      const prog = tareasApi.estado.progreso[t.id] || 0;
+      const hecha = !!tareasApi.estado.reclamadas[t.id];
+      const completa = prog >= t.meta;
+      const pct = Math.min(100, Math.round((prog / t.meta) * 100));
+      const div = document.createElement('div');
+      div.className = 'tarjeta-tarea' + (hecha ? ' hecha' : completa ? ' lista' : '');
+      div.innerHTML = `
+        <div class="tt-head"><span class="tt-ico">${t.ico}</span><span class="tt-titulo">${t.titulo}</span><span class="tt-premio">+${t.premio} ALC</span></div>
+        <div class="tt-desc">${t.desc}</div>
+        <div class="tt-barra"><div style="width:${pct}%"></div></div>
+        <div class="tt-pie">${hecha ? '✅ RECLAMADA' : completa ? '¡LISTA PARA RECLAMAR!' : `${prog}/${t.meta}`}</div>`;
+      if (completa && !hecha) {
+        const btn = document.createElement('button');
+        btn.className = 'btn btn-mini btn-verde tt-reclamar';
+        btn.textContent = '🪙 RECLAMAR';
+        btn.onclick = () => { tareasApi.reclamar(t.id); pintarTareas(tareasApi); toast(`🎉 Tarea completada: +${t.premio} ALC`, 'verde'); };
+        div.appendChild(btn);
+      }
+      lista.appendChild(div);
+    }
+  }
+
+  // ---------- panel billetera ----------
+  function pintarBilletera() {
+    $('wal-saldo').textContent = fmt(billetera.balance);
+    $('wal-addr').textContent = billetera.estado.addr.slice(0, 16) + '…' + billetera.estado.addr.slice(-6);
+    const hist = $('wal-historial');
+    hist.innerHTML = '';
+    if (!billetera.estado.historial.length) {
+      hist.innerHTML = '<div class="hist-vacio">Sin movimientos aún. ¡Ve a minar o acepta un contrato!</div>';
+    }
+    for (const h of billetera.estado.historial.slice(0, 10)) {
+      const d = document.createElement('div');
+      d.className = 'hist-item';
+      const fecha = new Date(h.ts).toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' });
+      d.innerHTML = `<span class="hist-mot">${h.motivo}</span><span class="hist-fecha">${fecha}</span><span class="hist-cant ${h.signo === '+' ? 'pos' : 'neg'}">${h.signo}${fmt(h.n)}</span>`;
+      hist.appendChild(d);
+    }
   }
 
   // ---------- panel agentes ----------
@@ -152,6 +202,8 @@ export function crearUI() {
 
   function refrescarEditor() {
     const cfg = estado.cfg;
+    if (!cfg.accesorios) cfg.accesorios = { sombrero: 'ninguno', gafas: 'ninguno', espalda: 'ninguno', capa: 'ninguna' };
+    if (!cfg.posee) cfg.posee = ['ninguno', 'ninguna'];
     if (edPJ) edEscena.remove(edPJ.grupo);
     edPJ = crearPersonaje(cfg);
     edPJ.grupo.position.y = .18;
@@ -166,6 +218,11 @@ export function crearUI() {
     selDe('ed-piel', cfg.piel); selDe('ed-camiseta', cfg.camiseta);
     selDe('ed-pantalon', cfg.pantalon); selDe('ed-pelo-color', cfg.peloColor);
     document.querySelectorAll('#ed-pelo .pill').forEach(p => p.classList.toggle('sel', p.dataset.v === cfg.peloEstilo));
+    for (const slot of Object.keys(TIENDA)) {
+      document.querySelectorAll(`#ed-${slot} .acc-pill`).forEach(p => {
+        p.classList.toggle('sel', p.dataset.v === cfg.accesorios[slot]);
+      });
+    }
   }
   const selDe = (id, val) => document.querySelectorAll(`#${id} .swatch`).forEach(s => s.classList.toggle('sel', s.dataset.v === val));
 
@@ -177,6 +234,41 @@ export function crearUI() {
     $('ed-pantalon').innerHTML = PANTALONES.map(c => `<div class="swatch" data-v="${c}" style="background:${c}"></div>`).join('');
     $('ed-pelo').innerHTML = PELO_ESTILOS.map(e => `<div class="pill" data-v="${e}">${e}</div>`).join('');
     $('ed-pelo-color').innerHTML = PELOS.map(c => `<div class="swatch" data-v="${c}" style="background:${c}"></div>`).join('');
+
+    // tienda de accesorios (4 slots)
+    const NOMBRES_SLOT = { sombrero: '🧢 SOMBRERO', gafas: '🕶️ GAFAS', espalda: '🎒 ESPALDA', capa: '🦸 CAPA' };
+    for (const slot of Object.keys(TIENDA)) {
+      const cont = $(`ed-${slot}`);
+      cont.innerHTML = TIENDA[slot].map(it => {
+        const posee = it.precio === 0 || (estado.cfg.posee || []).includes(it.id);
+        return `<div class="acc-pill" data-v="${it.id}" data-slot="${slot}">
+          <span>${it.nombre}</span>
+          ${posee ? '<b class="acc-ok">✓</b>' : `<b class="acc-precio">${it.precio} ALC</b>`}
+        </div>`;
+      }).join('');
+      cont.onclick = (e) => {
+        const pill = e.target.closest('.acc-pill');
+        if (!pill) return;
+        const id = pill.dataset.v, slot2 = pill.dataset.slot;
+        const item = TIENDA[slot2].find(o => o.id === id);
+        if (!item) return;
+        const posee = item.precio === 0 || (estado.cfg.posee || []).includes(item.id);
+        if (!posee) {
+          if (!billetera.gastar(item.precio, 'tienda')) {
+            toast(`🪙 Te faltan Alicoins: ${item.nombre} cuesta ${item.precio}. ¡Completa tareas!`, 'rojo-suave');
+            sfx.romper();
+            return;
+          }
+          estado.cfg.posee = [...(estado.cfg.posee || []), item.id];
+          toast(`🛍️ ¡${item.nombre} comprado! −${item.precio} ALC`, 'verde');
+          sfx.victoria();
+        }
+        estado.cfg.accesorios[slot2] = id;
+        estado.guardarCfg();
+        refrescarEditor();
+        sfx.click();
+      };
+    }
 
     const on = (id, ev, fn) => $(id).addEventListener(ev, fn);
     const set = (k, v) => { estado.cfg[k] = v; refrescarEditor(); sfx.click(); };
@@ -226,16 +318,22 @@ export function crearUI() {
     // botones hud
     $('hud-agentes').onclick = () => { sfx.click(); if (estado.onAgentes) estado.onAgentes(); };
     $('hud-contratos').onclick = () => { sfx.click(); if (estado.onContratos) estado.onContratos(); };
+    $('hud-tareas').onclick = () => { sfx.click(); if (estado.onTareas) estado.onTareas(); };
+    $('hud-billetera').onclick = () => { sfx.click(); if (estado.onBilletera) estado.onBilletera(); };
     $('hud-menu').onclick = () => { sfx.click(); mostrar('menu'); };
     // cierres
     $('cerrar-agentes').onclick = () => mostrar('panel-agentes', false);
     $('cerrar-contratos').onclick = () => mostrar('panel-contratos', false);
+    $('cerrar-tareas').onclick = () => mostrar('panel-tareas', false);
+    $('cerrar-billetera').onclick = () => mostrar('panel-billetera', false);
     $('cerrar-editor').onclick = () => mostrar('editor', false);
     $('cerrar-como').onclick = () => mostrar('como', false);
     $('cerrar-menu').onclick = () => mostrar('menu', false);
     // menú
     $('menu-editor').onclick = () => { mostrar('menu', false); mostrar('editor'); iniciarEditor(); };
     $('menu-agentes').onclick = () => { mostrar('menu', false); if (estado.onAgentes) estado.onAgentes(); };
+    $('menu-tareas').onclick = () => { mostrar('menu', false); if (estado.onTareas) estado.onTareas(); };
+    $('menu-billetera').onclick = () => { mostrar('menu', false); if (estado.onBilletera) estado.onBilletera(); };
     $('menu-como').onclick = () => { mostrar('menu', false); mostrar('como'); };
     $('menu-lobby').onclick = () => { mostrar('menu', false); if (estado.onLobby) estado.onLobby(); };
     $('builder-terminar').onclick = () => { if (estado.onTerminarObra) estado.onTerminarObra(); };
@@ -243,7 +341,7 @@ export function crearUI() {
 
   return {
     estado, toast, construir, irALobby, irAJuego, actualizarHUD, setZona, mostrarPrompt,
-    pintarAgentes, pintarContratos, iniciarEditor, pintarCatalogo, mostrar,
+    pintarAgentes, pintarContratos, pintarTareas, pintarBilletera, iniciarEditor, pintarCatalogo, mostrar,
     sonido: (n) => sfx[n]?.(),
     get seguirNPC() { return seguirNPC; }, set seguirNPC(v) { seguirNPC = v; },
   };

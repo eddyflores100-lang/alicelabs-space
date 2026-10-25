@@ -177,3 +177,43 @@ html,body{width:100%;height:100%;overflow:hidden;background:#0b1014;
   .lobby-menu .btn{min-width:240px}
   .btn-grande{padding:14px 24px;font-size:17px}
 }
+
+/* ============ v4: tareas, billetera, tienda de accesorios ============ */
+.tarjeta-tarea{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.09);border-radius:12px;padding:11px 12px;margin-bottom:10px;position:relative}
+.tarjeta-tarea.lista{border-color:var(--verde);box-shadow:0 0 14px rgba(0,242,153,.25)}
+.tarjeta-tarea.hecha{opacity:.55}
+.tt-head{display:flex;align-items:center;gap:8px}
+.tt-ico{font-size:18px}
+.tt-titulo{font-weight:800;font-size:13.5px;color:#fff;flex:1}
+.tt-premio{font-weight:800;font-size:12px;color:var(--verde);white-space:nowrap}
+.tt-desc{font-size:12px;color:#b9c9c2;margin:5px 0 7px}
+.tt-barra{height:7px;background:rgba(255,255,255,.09);border-radius:99px;overflow:hidden}
+.tt-barra>div{height:100%;background:linear-gradient(90deg,var(--cian),var(--verde));border-radius:99px;transition:width .4s}
+.tt-pie{font-size:11px;color:#9fb4ad;margin-top:5px;font-weight:700}
+.tt-reclamar{position:absolute;top:10px;right:10px;animation:latido 1.2s infinite}
+@keyframes latido{0%,100%{transform:scale(1)}50%{transform:scale(1.06)}}
+
+.wal-saldo-box{background:linear-gradient(135deg,rgba(0,242,153,.14),rgba(0,209,255,.10));border:1px solid rgba(0,242,153,.35);border-radius:14px;padding:14px;margin:12px 0;text-align:center}
+.wal-etiqueta{font-size:10px;letter-spacing:2px;color:#9fb4ad;font-weight:800}
+.wal-saldo{font-size:30px;font-weight:900;color:var(--verde);margin:4px 0}
+.wal-addr{font-size:11px;color:#9fb4ad;font-family:monospace}
+.wal-solana{background:rgba(0,209,255,.07);border:1px solid rgba(0,209,255,.25);border-radius:12px;padding:12px;margin-bottom:12px}
+.wal-solana-titulo{font-weight:800;font-size:12px;color:var(--cian);margin-bottom:6px}
+.wal-solana-txt{font-size:11.5px;color:#b9c9c2;line-height:1.5;margin-bottom:10px}
+.wal-solana .btn{width:100%;opacity:.6;cursor:not-allowed}
+.wal-hist-titulo{font-size:10px;letter-spacing:2px;color:#9fb4ad;font-weight:800;margin:10px 0 6px}
+.hist-item{display:flex;align-items:center;gap:8px;font-size:12px;padding:7px 4px;border-bottom:1px solid rgba(255,255,255,.06)}
+.hist-mot{flex:1;color:#dfe9e4}
+.hist-fecha{color:#7d8f88;font-size:10.5px}
+.hist-cant{font-weight:800}
+.hist-cant.pos{color:var(--verde)}
+.hist-cant.neg{color:var(--rojo)}
+.hist-vacio{color:#9fb4ad;font-size:12px;text-align:center;padding:14px}
+
+.acc-pill{display:flex;align-items:center;justify-content:space-between;gap:6px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:99px;padding:5px 11px;font-size:11.5px;color:#dfe9e4;cursor:pointer;transition:all .15s}
+.acc-pill:hover{background:rgba(0,209,255,.15);border-color:var(--cian)}
+.acc-pill.sel{background:rgba(0,242,153,.18);border-color:var(--verde);color:#fff}
+.acc-ok{color:var(--verde);font-size:12px}
+.acc-precio{color:var(--cian);font-size:10.5px;font-weight:800;white-space:nowrap}
+.ed-seccion{margin-top:14px;display:flex;align-items:center;gap:8px}
+.ed-tienda{font-size:9.5px;background:rgba(0,209,255,.15);color:var(--cian);border-radius:99px;padding:2px 8px;letter-spacing:1px;font-weight:800}

@@ -35,28 +35,31 @@
     <button class="btn btn-rojo-suave" id="btn-como">❔&nbsp; CÓMO JUGAR</button>
   </div>
   <div class="lobby-stats">
-    <div class="chip chip-verde">💰 <b id="lobby-monedas">0</b> monedas</div>
+    <div class="chip chip-verde">🪙 <b id="lobby-monedas">0</b> ALC</div>
     <div class="chip chip-cian">🤖 <b>24</b> agentes trabajando ahora</div>
     <div class="chip chip-rojo">🏠 <b id="lobby-casas">0</b> casas construidas</div>
+    <div class="chip chip-cian">🏙️ <b>8</b> distritos por explorar</div>
   </div>
-  <div class="lobby-marca">alicelabs llc · los agentes minan, trabajan y se relajan · tú los observas en vivo</div>
+  <div class="lobby-marca">alicelabs llc · los agentes trabajan y ganan Alicoins · Solana x402 en camino</div>
 </div>
 
 <!-- ===== HUD ===== -->
 <div id="hud" class="hidden">
   <div class="hud-top-left">
-    <div class="hud-card chip-verde">💰 <b id="hud-monedas">0</b></div>
+    <div class="hud-card chip-verde">🪙 <b id="hud-monedas">0</b> ALC</div>
     <div class="hud-card chip-cian" title="Ánimo de tu agente">⚡ <b id="hud-animo">100</b>%</div>
   </div>
   <div class="hud-top-right">
     <button class="btn btn-mini btn-cian" id="hud-agentes">🤖 AGENTES</button>
+    <button class="btn btn-mini btn-cian" id="hud-tareas">🎯 TAREAS <span class="badge" id="hud-badge-tareas">0</span></button>
     <button class="btn btn-mini btn-verde" id="hud-contratos">📋 CONTRATOS <span class="badge" id="hud-badge">0</span></button>
+    <button class="btn btn-mini btn-verde" id="hud-billetera">🪙 ALC</button>
     <button class="btn btn-mini btn-rojo-suave" id="hud-menu">≡</button>
   </div>
   <div class="hud-zone" id="hud-zona">📍 Plaza Central</div>
   <div id="prompt" class="hidden"><b>E</b> <span id="prompt-texto">Minar</span></div>
   <div id="toasts"></div>
-  <div class="hud-hint">WASD moverse · SHIFT correr · E interactuar · arrastra el ratón para mirar · rueda para zoom</div>
+  <div class="hud-hint">WASD moverse · SHIFT correr · E interactuar/hablar · arrastra el ratón para mirar · rueda para zoom</div>
 </div>
 
 <!-- ===== MODO CONSTRUCTOR ===== -->
@@ -68,6 +71,36 @@
   </div>
   <div class="builder-catalogo" id="builder-catalogo"></div>
   <div class="builder-ayuda">Clic colocar · R rotar · clic derecho o [X] demoler (devuelve 70%) · rueda sube/baja la pieza</div>
+</div>
+
+<!-- ===== PANEL TAREAS ===== -->
+<div id="panel-tareas" class="panel-lateral hidden">
+  <div class="panel-head">
+    <div>🎯 TAREAS DE ALICELABS</div>
+    <button class="btn btn-mini btn-rojo-suave" id="cerrar-tareas">✕</button>
+  </div>
+  <div class="panel-sub">Trabaja, explora y decora: cada tarea paga Alicoins a tu agente.</div>
+  <div class="panel-lista" id="lista-tareas"></div>
+</div>
+
+<!-- ===== PANEL BILLETERA ===== -->
+<div id="panel-billetera" class="panel-lateral hidden">
+  <div class="panel-head">
+    <div>🪙 BILLETERA ALICOINS</div>
+    <button class="btn btn-mini btn-rojo-suave" id="cerrar-billetera">✕</button>
+  </div>
+  <div class="wal-saldo-box">
+    <div class="wal-etiqueta">SALDO DE TU AGENTE</div>
+    <div class="wal-saldo"><b id="wal-saldo">0</b> ALC</div>
+    <div class="wal-addr" id="wal-addr">ALX…</div>
+  </div>
+  <div class="wal-solana">
+    <div class="wal-solana-titulo">⚡ RUTA SOLANA / x402</div>
+    <div class="wal-solana-txt">Los Alicoins son la moneda interna de Alice City. El roadmap de AliceLabs los convierte en tokens reales: tus tareas de hoy se convierten en tu historial de trabajo. Retiros a Solana y pago x402 por llamada — <b>próximamente</b>.</div>
+    <button class="btn btn-cian" id="wal-conectar" disabled title="Disponible cuando el token ALC se despliegue">🔗 CONECTAR SOLANA (PRÓXIMAMENTE)</button>
+  </div>
+  <div class="wal-hist-titulo">MOVIMIENTOS RECIENTES</div>
+  <div id="wal-historial"></div>
 </div>
 
 <!-- ===== PANEL AGENTES ===== -->
@@ -118,6 +151,14 @@
         <label>PELO</label>
         <div class="opts fila" id="ed-pelo"></div>
         <div class="opts" id="ed-pelo-color"></div>
+        <label class="ed-seccion">🧢 SOMBRERO <span class="ed-tienda">tienda ALC</span></label>
+        <div class="opts fila" id="ed-sombrero"></div>
+        <label>🕶️ GAFAS</label>
+        <div class="opts fila" id="ed-gafas"></div>
+        <label>🎒 ESPALDA</label>
+        <div class="opts fila" id="ed-espalda"></div>
+        <label>🦸 CAPA</label>
+        <div class="opts fila" id="ed-capa"></div>
         <div class="editor-botones">
           <button class="btn btn-cian" id="ed-aleatorio">🎲 ALEATORIO</button>
           <button class="btn btn-verde" id="ed-guardar">💾 GUARDAR AGENTE</button>
@@ -135,12 +176,15 @@
       <button class="btn btn-mini btn-rojo-suave" id="cerrar-como">✕</button>
     </div>
     <div class="como-cuerpo">
-      <p><b class="verde">🎯 Tu misión:</b> eres el dueño de un agente. Hazlo trabajar para ganar <b>monedas</b> y construirle una casa en su parcela del norte.</p>
+      <p><b class="verde">🎯 Tu misión:</b> eres el dueño de un agente. Hazlo <b>trabajar</b>: mina, completa contratos y tareas para ganar <b>Alicoins (ALC)</b> y construirle una casa. AliceLabs paga a quien trabaja — pronto en tokens reales vía Solana.</p>
+      <p><b class="cian">🎯 Tareas:</b> abre <b>TAREAS</b> en el HUD. Cada tarea pagada se reclama con su botón 🪙. Son tu sueldo de agente.</p>
+      <p><b class="cian">🪙 Billetera:</b> tu saldo ALC e historial de movimientos. La ruta a <b>Solana/x402</b> está en camino: trabajar hoy construye tu reputación.</p>
       <p><b class="cian">⛏️ Minar:</b> ve a las <b>Minas del Oeste</b>, acércate a un cristal y pulsa <b>E</b>. Los cristales se regeneran.</p>
       <p><b class="cian">📋 Contratos:</b> en el <b>Mercado del Este</b> hay un tablero con contratos. Acepta uno, ve al punto marcado y pulsa <b>E</b> para cobrar.</p>
-      <p><b class="cian">🏗️ Construir:</b> en tu <b>Parcela del Norte</b> pulsa <b>B</b> para abrir el constructor. Suelo, paredes, techo… ¡y los agentes vendrán a verla!</p>
-      <p><b class="rojo">🤖 Agentes en vivo:</b> los 24 agentes de la ciudad trabajan solos (minan, reparten, descansan). Ábrelos desde el HUD y pulsa <b>Seguir</b> para observarlos como en Ready Player One.</p>
-      <p><b class="verde">⚡ Ánimo:</b> siéntate en los bancos del Parque Sur para subir el ánimo de tu agente. Un agente feliz mina el doble.</p>
+      <p><b class="cian">🏗️ Construir:</b> en tu <b>Parcela del Norte</b> pulsa <b>B</b> para abrir el constructor.</p>
+      <p><b class="rojo">🧢 Decorar avatar:</b> en el editor tienes la <b>tienda de accesorios</b>: sombreros, gafas, mochilas, jetpack, alas, capas… se compran con ALC.</p>
+      <p><b class="rojo">🏙️ Explora:</b> <b>8 distritos</b> — Plaza, Minas, Mercado, Parque, Parcelas, <b>Downtown con la Torre Alice</b>, <b>Lago del Sol</b> con muelle y veleros, y el <b>Bosque de pinos</b> con luciérnagas. Visitar zonas paga.</p>
+      <p><b class="verde">💬 Habla:</b> acércate a cualquier agente y pulsa <b>E</b> — te responderán con burbuja de voz.</p>
     </div>
   </div>
 </div>
@@ -151,6 +195,8 @@
     <div class="modal-head"><div>≡ MENÚ</div><button class="btn btn-mini btn-rojo-suave" id="cerrar-menu">✕</button></div>
     <div class="menu-cuerpo">
       <button class="btn btn-cian" id="menu-editor">🧍 EDITAR PERSONAJE</button>
+      <button class="btn btn-cian" id="menu-tareas">🎯 TAREAS</button>
+      <button class="btn btn-cian" id="menu-billetera">🪙 BILLETERA ALC</button>
       <button class="btn btn-cian" id="menu-agentes">🤖 AGENTES EN VIVO</button>
       <button class="btn btn-cian" id="menu-como">❔ CÓMO JUGAR</button>
       <button class="btn btn-verde" id="menu-lobby">🏠 VOLVER AL LOBBY</button>

@@ -15,6 +15,165 @@ export const PANTALONES= ['#22343c','#2b3a55','#5d5148','#7a5230','#1f6f54','#3d
 export const PELOS     = ['#1b1b1b','#5a3a1e','#c98f2f','#e5e5e5','#b34a2e','#00d1ff'];
 export const PELO_ESTILOS = ['corto','picos','mono','largo','calvo'];
 
+// ---------- TIENDA DE ACCESORIOS (precios en ALC; 0 = gratis) ----------
+export const TIENDA = {
+  sombrero: [
+    { id: 'ninguno',   nombre: 'Nada',           precio: 0 },
+    { id: 'boina',     nombre: 'Boina artista',  precio: 60 },
+    { id: 'copa',      nombre: 'Copa elegante',  precio: 120 },
+    { id: 'orejas',    nombre: 'Orejas de gato', precio: 90 },
+    { id: 'corona',    nombre: 'Corona dorada',  precio: 250 },
+    { id: 'propulsor', nombre: 'Casco cohete',   precio: 300 },
+  ],
+  gafas: [
+    { id: 'ninguno', nombre: 'Ninguna',  precio: 0 },
+    { id: 'sol',     nombre: 'De sol',   precio: 50 },
+    { id: 'pixel',   nombre: 'Pixel 8-bit', precio: 75 },
+    { id: 'visor',   nombre: 'Visor neón',  precio: 150 },
+    { id: 'corazon', nombre: 'Corazones',   precio: 100 },
+  ],
+  espalda: [
+    { id: 'ninguno',  nombre: 'Nada',        precio: 0 },
+    { id: 'mochila',  nombre: 'Mochila',     precio: 120 },
+    { id: 'alas',     nombre: 'Alas de agente', precio: 350 },
+    { id: 'jetpack',  nombre: 'Jetpack',     precio: 400 },
+    { id: 'dron',     nombre: 'Dron personal', precio: 500 },
+  ],
+  capa: [
+    { id: 'ninguna',  nombre: 'Sin capa',    precio: 0 },
+    { id: 'capaVerde', nombre: 'Capa verde', precio: 100 },
+    { id: 'capaCian', nombre: 'Capa cian',  precio: 100 },
+    { id: 'capaRoja', nombre: 'Capa roja',  precio: 120 },
+  ],
+};
+
+// ---------- fábrica de accesorios ----------
+function crearAccesorio(slot, id) {
+  const g = new THREE.Group();
+  const mat = (c, o = {}) => new THREE.MeshStandardMaterial({ color: c, roughness: .6, ...o });
+  if (slot === 'sombrero') {
+    if (id === 'boina') {
+      const b = new THREE.Mesh(new THREE.SphereGeometry(.30, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2), mat(0x2e2e38));
+      b.scale.y = .5; b.position.y = .44; g.add(b);
+      const punt = new THREE.Mesh(new THREE.SphereGeometry(.05, 6, 5), mat(0x2e2e38));
+      punt.position.set(.12, .58, 0); g.add(punt);
+    } else if (id === 'copa') {
+      const tub = new THREE.Mesh(new THREE.CylinderGeometry(.16, .17, .28, 12), mat(0x181820, { roughness: .35 }));
+      tub.position.y = .58; g.add(tub);
+      const ala = new THREE.Mesh(new THREE.CylinderGeometry(.30, .30, .04, 14), mat(0x181820, { roughness: .35 }));
+      ala.position.y = .44; g.add(ala);
+      const banda = new THREE.Mesh(new THREE.CylinderGeometry(.165, .165, .06, 12), mat(0x00F299, { emissive: 0x00F299, emissiveIntensity: .5 }));
+      banda.position.y = .48; g.add(banda);
+    } else if (id === 'orejas') {
+      for (const dx of [-.16, .16]) {
+        const tri = new THREE.Mesh(new THREE.ConeGeometry(.10, .26, 4), mat(0xff8fab));
+        tri.position.set(dx, .52, 0); tri.rotation.z = -dx * .8; g.add(tri);
+        const inner = new THREE.Mesh(new THREE.ConeGeometry(.05, .14, 4), mat(0xffffff));
+        inner.position.set(dx, .52, .02); inner.rotation.z = -dx * .8; g.add(inner);
+      }
+    } else if (id === 'corona') {
+      const base = new THREE.Mesh(new THREE.CylinderGeometry(.24, .26, .10, 12), mat(0xffd166, { metalness: .85, roughness: .25 }));
+      base.position.y = .48; g.add(base);
+      for (let i = 0; i < 5; i++) {
+        const pico = new THREE.Mesh(new THREE.ConeGeometry(.05, .16, 4), mat(0xffd166, { metalness: .85, roughness: .25 }));
+        const a = (i / 5) * Math.PI * 2;
+        pico.position.set(Math.cos(a) * .21, .60, Math.sin(a) * .21); g.add(pico);
+      }
+      const gema = new THREE.Mesh(new THREE.OctahedronGeometry(.06), mat(0x00d1ff, { emissive: 0x00d1ff, emissiveIntensity: .8 }));
+      gema.position.set(0, .52, .24); g.add(gema);
+    } else if (id === 'propulsor') {
+      const dom = new THREE.Mesh(new THREE.SphereGeometry(.33, 14, 10, 0, Math.PI * 2, 0, Math.PI / 2), mat(0xd8dee4, { metalness: .7, roughness: .3 }));
+      dom.position.y = .38; dom.scale.y = .8; g.add(dom);
+      const vis = new THREE.Mesh(new THREE.BoxGeometry(.34, .12, .05), mat(0x00d1ff, { emissive: 0x00d1ff, emissiveIntensity: 1.2 }));
+      vis.position.set(0, .44, .28); g.add(vis);
+      const aleta = new THREE.Mesh(new THREE.ConeGeometry(.06, .22, 4), mat(0xfb2c36));
+      aleta.position.set(0, .62, -.18); g.add(aleta);
+    }
+  } else if (slot === 'gafas') {
+    const puente = (matL) => {
+      const m = new THREE.Mesh(new THREE.BoxGeometry(.10, .03, .03), matL);
+      m.position.set(0, .30, .235); g.add(m);
+    };
+    if (id === 'sol') {
+      const matL = mat(0x14161a, { roughness: .2, metalness: .4 });
+      for (const dx of [-.11, .11]) {
+        const l = new THREE.Mesh(new THREE.BoxGeometry(.16, .10, .03), matL);
+        l.position.set(dx, .30, .235); g.add(l);
+      }
+      puente(matL);
+    } else if (id === 'pixel') {
+      const matL = mat(0x00F299, { emissive: 0x00F299, emissiveIntensity: .7 });
+      for (const cx of [-.11, .11]) for (const cy of [0, .06]) {
+        const l = new THREE.Mesh(new THREE.BoxGeometry(.05, .05, .02), matL);
+        l.position.set(cx, .28 + cy, .235); g.add(l);
+      }
+    } else if (id === 'visor') {
+      const v = new THREE.Mesh(new THREE.BoxGeometry(.40, .10, .05), mat(0x00d1ff, { emissive: 0x00d1ff, emissiveIntensity: 1.1, transparent: true, opacity: .9 }));
+      v.position.set(0, .30, .235); g.add(v);
+    } else if (id === 'corazon') {
+      const matL = mat(0xfb2c36, { emissive: 0xfb2c36, emissiveIntensity: .5 });
+      for (const dx of [-.11, .11]) {
+        for (const [ox, oy, s] of [[-.03, .04, 1], [.03, .04, 1], [0, -.02, 1.2]]) {
+          const c = new THREE.Mesh(new THREE.SphereGeometry(.028 * s, 6, 5), matL);
+          c.position.set(dx + ox, .28 + oy + .02, .235); g.add(c);
+        }
+      }
+    }
+  } else if (slot === 'espalda') {
+    if (id === 'mochila') {
+      const m = new THREE.Mesh(new THREE.BoxGeometry(.30, .34, .14), mat(0x8a5a2e));
+      m.position.set(0, .28, -.22); g.add(m);
+      const bol = new THREE.Mesh(new THREE.BoxGeometry(.12, .08, .04), mat(0xffd166));
+      bol.position.set(0, .36, -.30); g.add(bol);
+    } else if (id === 'alas') {
+      for (const dx of [-1, 1]) {
+        const ala = new THREE.Mesh(new THREE.BoxGeometry(.42, .50, .03), mat(0xf5f5f0, { roughness: .5, transparent: true, opacity: .92 }));
+        ala.position.set(dx * .30, .30, -.20); ala.rotation.z = dx * .38; ala.rotation.y = dx * -.18;
+        g.add(ala);
+      }
+    } else if (id === 'jetpack') {
+      for (const dx of [-.12, .12]) {
+        const cil = new THREE.Mesh(new THREE.CylinderGeometry(.07, .07, .36, 10), mat(0xb9c4cc, { metalness: .7, roughness: .3 }));
+        cil.position.set(dx, .30, -.24); g.add(cil);
+        const lla = new THREE.Mesh(new THREE.ConeGeometry(.07, .10, 8), mat(0xfb2c36, { emissive: 0xfb2c36, emissiveIntensity: .6 }));
+        lla.rotation.x = Math.PI; lla.position.set(dx, .08, -.24); g.add(lla);
+      }
+    } else if (id === 'dron') {
+      const cuerpo = new THREE.Mesh(new THREE.BoxGeometry(.18, .06, .18), mat(0x22343c));
+      cuerpo.position.set(0, .78, -.28); g.add(cuerpo);
+      for (const [ox, oz] of [[-.14, -.14], [.14, -.14], [-.14, .14], [.14, .14]]) {
+        const heli = new THREE.Mesh(new THREE.CylinderGeometry(.09, .09, .015, 8), mat(0x00d1ff, { transparent: true, opacity: .7 }));
+        heli.position.set(ox, .82, -.28 + oz); g.add(heli);
+      }
+      g.userData.dron = true; // gira en update
+    }
+  } else if (slot === 'capa') {
+    const colores = { capaVerde: 0x00F299, capaCian: 0x00d1ff, capaRoja: 0xfb2c36 };
+    if (colores[id]) {
+      const c = new THREE.Mesh(new THREE.PlaneGeometry(.5, .62),
+        mat(colores[id], { side: THREE.DoubleSide, roughness: .8 }));
+      c.position.set(0, .28, -.17); c.rotation.x = .10; g.add(c);
+      g.userData.capa = true; // ondea en update
+    }
+  }
+  g.traverse(o => { if (o.isMesh) o.castShadow = true; });
+  return g;
+}
+
+export function crearAccesorios(cfg) {
+  const acc = cfg.accesorios || {};
+  const g = new THREE.Group();
+  const partes = {};
+  for (const slot of Object.keys(TIENDA)) {
+    const id = acc[slot];
+    if (!id || id === 'ninguno' || id === 'ninguna') continue;
+    const p = crearAccesorio(slot, id);
+    partes[slot] = p;
+    g.add(p);
+  }
+  return { grupo: g, partes };
+}
+
 // ---------- textura de cara ----------
 function texturaCara(pielHex, irisHex = '#3b6ea5', sonrisa = true) {
   const c = document.createElement('canvas'); c.width = c.height = 128;
@@ -192,6 +351,18 @@ export function crearPersonaje(cfg) {
   pelo.position.y = .38; cabeza.add(pelo);
   const casco = crearCasco(rol); cabeza.add(casco);
 
+  // ----- accesorios (tienda) -----
+  const acc = cfg.accesorios || {};
+  let capaMalla = null, dronHelis = null;
+  const accesorios = crearAccesorios(cfg);
+  if (accesorios.partes.sombrero) cabeza.add(accesorios.partes.sombrero);
+  if (accesorios.partes.gafas) cabeza.add(accesorios.partes.gafas);
+  if (accesorios.partes.espalda) torso.add(accesorios.partes.espalda);
+  if (accesorios.partes.capa) { torso.add(accesorios.partes.capa); capaMalla = accesorios.partes.capa; }
+  if (acc.espalda === 'dron' && accesorios.partes.espalda) {
+    dronHelis = accesorios.partes.espalda.children.filter(o => o.geometry?.type === 'CylinderGeometry');
+  }
+
   // ----- herramienta según rol -----
   const herramienta = new THREE.Group();
   if (rol === 'minero') {
@@ -265,12 +436,21 @@ export function crearPersonaje(cfg) {
         piernaI.rotation.x = piernaD.rotation.x = 0;
         grupo.position.y = 0;
       }
+      // accesorios animados
+      if (capaMalla) {
+        capaMalla.rotation.x = .10 + Math.sin(k * 2.4) * .07 + (estado === 'walk' ? Math.sin(k * 9) * .12 : 0);
+      }
+      if (dronHelis) for (const h of dronHelis) h.rotation.y += .55;
     },
   };
   return api;
 }
 
 // aleatorio
+const ACCESORIO_AL_AZAR = (slot) => {
+  const ops = TIENDA[slot].filter(o => o.precio === 0 || Math.random() < .35);
+  return ops[(Math.random() * ops.length) | 0]?.id || 'ninguno';
+};
 export function personajeAleatorio(base = {}) {
   const roles = Object.keys(ROLES);
   return {
@@ -281,6 +461,12 @@ export function personajeAleatorio(base = {}) {
     pantalon: PANTALONES[(Math.random() * PANTALONES.length) | 0],
     peloEstilo: PELO_ESTILOS[(Math.random() * PELO_ESTILOS.length) | 0],
     peloColor: PELOS[(Math.random() * PELOS.length) | 0],
+    accesorios: base.accesorios ?? {
+      sombrero: Math.random() < .55 ? ACCESORIO_AL_AZAR('sombrero') : 'ninguno',
+      gafas: Math.random() < .45 ? ACCESORIO_AL_AZAR('gafas') : 'ninguno',
+      espalda: Math.random() < .3 ? ACCESORIO_AL_AZAR('espalda') : 'ninguno',
+      capa: Math.random() < .2 ? ACCESORIO_AL_AZAR('capa') : 'ninguna',
+    },
     ...base,
   };
 }

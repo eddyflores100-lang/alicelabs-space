@@ -292,20 +292,20 @@ export function crearMundo(escena) {
   sol.position.set(60, 90, 40);
   sol.castShadow = true;
   sol.shadow.mapSize.set(2048, 2048);
-  sol.shadow.camera.left = -110; sol.shadow.camera.right = 110;
-  sol.shadow.camera.top = 110; sol.shadow.camera.bottom = -110;
-  sol.shadow.camera.far = 300;
+  sol.shadow.camera.left = -160; sol.shadow.camera.right = 160;
+  sol.shadow.camera.top = 160; sol.shadow.camera.bottom = -160;
+  sol.shadow.camera.far = 420;
   sol.shadow.bias = -0.0004;
   escena.add(sol);
   const ambiente = new THREE.AmbientLight(0xdfeff8, .5);
   escena.add(ambiente);
 
   crearCielo(escena);
-  escena.fog = new THREE.Fog(0xbfe6f8, 90, 260);
+  escena.fog = new THREE.Fog(0xbfe6f8, 110, 400);
 
   // ----- suelo -----
-  const texG = texCésped(); texG.wrapS = texG.wrapT = THREE.RepeatWrapping; texG.repeat.set(40, 40);
-  const suelo = new THREE.Mesh(new THREE.CircleGeometry(240, 48),
+  const texG = texCésped(); texG.wrapS = texG.wrapT = THREE.RepeatWrapping; texG.repeat.set(58, 58);
+  const suelo = new THREE.Mesh(new THREE.CircleGeometry(340, 56),
     new THREE.MeshStandardMaterial({ map: texG, roughness: 1 }));
   suelo.rotation.x = -PIE / 2; suelo.receiveShadow = true; escena.add(suelo);
 
@@ -316,16 +316,16 @@ export function crearMundo(escena) {
     m.rotation.x = -PIE / 2; m.rotation.z = rotY; m.position.set(x, .02, z);
     m.receiveShadow = true; escena.add(m); return m;
   };
-  carretera(9, 220, 0, 0);           // N-S
-  carretera(9, 220, 0, 0, PIE / 2);  // E-W
+  carretera(9, 300, 0, 0);           // N-S
+  carretera(9, 300, 0, 0, PIE / 2);  // E-W
   // aceras
   const matAcera = new THREE.MeshStandardMaterial({ color: 0xcfd6cf, roughness: 1 });
   const acera = (w, l, x, z) => {
     const m = new THREE.Mesh(new THREE.PlaneGeometry(w, l), matAcera);
     m.rotation.x = -PIE / 2; m.position.set(x, .015, z); m.receiveShadow = true; escena.add(m);
   };
-  acera(13, 220, 0, 0); acera(13, 220, 0, 0) /* reusar */;
-  acera(220, 13, 0, 0);
+  acera(13, 300, 0, 0); acera(13, 300, 0, 0) /* reusar */;
+  acera(300, 13, 0, 0);
 
   // rotonda alrededor de la plaza
   const rotonda = new THREE.Mesh(new THREE.RingGeometry(15.2, 23.8, 48),
@@ -355,7 +355,10 @@ export function crearMundo(escena) {
   for (let i = 0; i < 7; i++) { posEdif.push([-rnd(18, 95), rnd(22, 95)]); posEdif.push([rnd(18, 95), rnd(22, 95)]); }
   const cercaZona = (x, z) =>
     Math.hypot(x - 60, z) < 20 || Math.hypot(x + 60, z) < 20 ||
-    Math.hypot(x, z - 60) < 18 || (z > -76 && z < -46 && x > -24 && x < 60);
+    Math.hypot(x, z - 60) < 18 || (z > -76 && z < -46 && x > -24 && x < 60) ||
+    Math.hypot(x - 75, z + 75) < 26 ||  // downtown + torre
+    Math.hypot(x + 75, z - 75) < 40 ||  // lago + playa
+    Math.hypot(x + 75, z + 75) < 30;    // bosque
   for (const [x, z] of posEdif) {
     if (cercaZona(x, z)) continue;
     let ok = true;
@@ -546,6 +549,7 @@ export function crearMundo(escena) {
     if (Math.abs(x) < 9 || Math.abs(z) < 9) continue;
     if (Math.hypot(x - 60, z) < 18 || Math.hypot(x + 60, z) < 18 || Math.hypot(x, z - 60) < 14 || Math.hypot(x, z + 60) < 16) continue;
     if (z > -76 && z < -46 && x > -24 && x < 60) continue;
+    if (Math.hypot(x - 75, z + 75) < 26 || Math.hypot(x + 75, z - 75) < 40 || Math.hypot(x + 75, z + 75) < 30) continue;
     let ok = true;
     for (const [ox, oz] of arbolPos) if (Math.hypot(ox - x, oz - z) < 5) { ok = false; break; }
     if (!ok) continue;
