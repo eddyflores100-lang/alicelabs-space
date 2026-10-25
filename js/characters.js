@@ -425,7 +425,7 @@ export function crearPersonaje(cfg) {
       } else if (estado === 'sit' || estado === 'relax') {
         piernaI.rotation.x = piernaD.rotation.x = -1.45;
         brazoI.rotation.x = brazoD.rotation.x = -.25;
-        grupo.position.y = -.34;
+        // la altura la fija quien sienta (asiento de banco: y .31); la pose no toca y
         cabeza.rotation.z = Math.sin(k * 1.2) * .08;
       } else { // idle
         const b = Math.sin(k * 2) * .5 + .5;

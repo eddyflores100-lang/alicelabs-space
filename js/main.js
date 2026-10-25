@@ -9,6 +9,7 @@ import { crearEconomia } from './economy.js';
 import { crearConstructor } from './builder.js';
 import { crearUI } from './ui.js';
 import { crearTareas } from './quests.js';
+import { traficoCrear } from './trafico.js';
 import { billetera } from './wallet.js';
 import { on, emitir } from './eventos.js';
 import { sfx } from './sfx.js';
@@ -43,13 +44,13 @@ const tareas = crearTareas();
 const pasos = [
   ['Levantando el cielo y el sol…', () => {}],
   ['Construyendo la Plaza Central…', () => { mundo = crearMundo(escena); }],
-  ['Pintando el lago, el bosque y el downtown…', () => { distritos = crearDistritos(escena, mundo.animables); }],
-  ['Despertando a los 24 agentes…', () => { npcs = crearNPCs(escena, mundo); }],
+  ['Pintando el lago, el bosque y el downtown…', () => { distritos = crearDistritos(escena, mundo.animables, mundo); trafico = traficoCrear(escena); }],
+  ['Despertando a los 24 agentes…', () => { npcs = crearNPCs(escena, mundo, distritos); }],
   ['Colocando cristales y contratos…', () => { economia = crearEconomia(escena, mundo, jugador, ui, npcs); }],
   ['Abriendo tu parcela del norte…', () => { builder = crearConstructor(escena, mundo.parcelas.jugador, economia); }],
   ['¡Listo! Bienvenido a ALICE CITY', () => { conectarUI(); }],
 ];
-let pasoIdx = 0, mundo = null, distritos = null, npcs = null, economia = null, builder = null, jugador = null;
+let pasoIdx = 0, mundo = null, distritos = null, npcs = null, economia = null, builder = null, jugador = null, trafico = null;
 
 // jugador se crea antes de la economía (necesaria por ella)
 function crearJugadorAhora() {
@@ -196,10 +197,10 @@ function refrescoAgentes() {
 
 // ---------- zonas ----------
 const ZONAS_LABEL = [
-  ['Plaza Central', 0, 0, 20], ['Minas del Oeste', -60, 0, 18], ['Mercado del Este', 60, 0, 18],
-  ['Parque Sur', 0, 60, 16], ['Parcela del Norte', 0, -60, 20],
-  ['Downtown · Torre Alice', 75, -75, 22], ['Lago del Sol', -75, 75, 34],
-  ['Bosque de Pinos', -75, -75, 26],
+  ['Plaza Central', 0, 0, 21], ['Minas del Oeste', -38, -38, 19], ['Mercado del Este', 38, 38, 18],
+  ['Parcela del Norte', 37, -52, 25], ['Parque Sur', -38, 38, 17],
+  ['Downtown · Torre Alice', 114, -114, 26], ['Lago del Sol', -114, 114, 33],
+  ['Bosque de Pinos', -114, -114, 26],
 ];
 let zonaAnterior = null;
 function zonaActual(p) {
@@ -221,6 +222,7 @@ function animate() {
 
   if (mundo) for (const f of mundo.animables) f(t);
   if (npcs) npcs.update(dt, t);
+  if (trafico) trafico.update(dt, jugador ? jugador.personaje.grupo.position : null, npcs ? npcs.npcs : null);
 
   if (modo === 'lobby' || !jugador) {
     // cámara cinematográfica orbitando la ciudad
@@ -235,7 +237,7 @@ function animate() {
       const npc = npcs.npcs.find(n => n.id === ui.seguirNPC);
       if (npc) jugador.seguir(npc.pj.grupo.position);
     } else {
-      jugador.update(dt, t, { minX: -148, maxX: 148, minZ: -148, maxZ: 148 });
+      jugador.update(dt, t, { minX: -145, maxX: 145, minZ: -145, maxZ: 145 });
       if (economia) economia.update(dt, t);
       if (modo === 'construir' && builder) builder.update(camara, canvas);
       const zona = zonaActual(jugador.personaje.grupo.position);

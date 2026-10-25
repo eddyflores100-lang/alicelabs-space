@@ -39,11 +39,11 @@ const CONTRATOS_BASE = [
 
 const DEST_POS = {
   plaza: new THREE.Vector3(0, 0, 10),
-  parque: new THREE.Vector3(0, 0, 58),
-  parcela: new THREE.Vector3(-9, 0, -52),
-  mina: new THREE.Vector3(-60, 0, 4),
-  mercado: new THREE.Vector3(60, 0, 6),
-  tablero: new THREE.Vector3(65.5, 0, 0),
+  parque: new THREE.Vector3(-38, 0, 46),
+  parcela: new THREE.Vector3(14, 0, -45),
+  mina: new THREE.Vector3(-38, 0, -38),
+  mercado: new THREE.Vector3(38, 0, 44),
+  tablero: new THREE.Vector3(38, 0, 45),
 };
 
 export function crearEconomia(escena, mundo, jugador, ui, npcs = null) {
@@ -60,8 +60,8 @@ export function crearEconomia(escena, mundo, jugador, ui, npcs = null) {
   const cristales = [];
   const spawnCristal = () => {
     const c = crearCristal(Math.random() < .55 ? 0x00d1ff : 0x00F299);
-    const a = rnd(0, 6.28), r = rnd(2, 12);
-    c.position.set(-60 + Math.cos(a) * r, 0, Math.sin(a) * r);
+    const a = rnd(0, 6.28), r = rnd(2, 7.5);
+    c.position.set(-38 + Math.cos(a) * r, 0, -38 + Math.sin(a) * r);
     escena.add(c);
     const obj = { mesh: c, vivo: true, respawn: 0, valor: 5 + (Math.random() * 9 | 0) };
     cristales.push(obj);
@@ -137,11 +137,12 @@ export function crearEconomia(escena, mundo, jugador, ui, npcs = null) {
       ui.actualizarHUD(estado);
     }
     if (tipo === 'banco') {
-      // sentarse a relajar: coloca al jugador en el banco
+      // sentarse a relajar: sobre el asiento del banco, mirando hacia delante
       const b = estado.cerca.pos;
-      jugador.personaje.grupo.position.set(b.x, 0, b.z + .12);
-      jugador.personaje.grupo.rotation.y = Math.atan2(-b.x, -b.z);
+      jugador.personaje.grupo.position.set(b.x - Math.sin(b.rot) * .05, .31, b.z - Math.cos(b.rot) * .05);
+      jugador.personaje.grupo.rotation.y = b.rot;
       jugador.personaje.setEstado('sit');
+      jugador.estado.sentado = true;
       estado.relajando = true;
       emitir('relax', 1);
       ui.toast('😎 Relajando… el ánimo sube. Muévete para levantarte', 'cian');
@@ -167,9 +168,9 @@ export function crearEconomia(escena, mundo, jugador, ui, npcs = null) {
       if (d < mejorD) { mejorD = d; mejor = { tipo: 'cristal', ref: c, pos: c.mesh.position }; }
     }
     if (!mejor) {
-      for (const [x, z] of mundo.bancosPos) {
-        const d = Math.hypot(x - p.x, z - p.z);
-        if (d < 2.2 && !estado.relajando) { mejor = { tipo: 'banco', pos: new THREE.Vector3(x, 0, z) }; break; }
+      for (const b of mundo.bancosPos) {
+        const d = Math.hypot(b.x - p.x, b.z - p.z);
+        if (d < 2.2 && !estado.relajando) { mejor = { tipo: 'banco', pos: { x: b.x, z: b.z, rot: b.rot } }; break; }
       }
     }
     if (!mejor && estado.contrato) {
@@ -197,8 +198,8 @@ export function crearEconomia(escena, mundo, jugador, ui, npcs = null) {
         c.respawn -= dt;
         if (c.respawn <= 0) {
           c.vivo = true;
-          const a = rnd(0, 6.28), r = rnd(2, 12);
-          c.mesh.position.set(-60 + Math.cos(a) * r, 0, Math.sin(a) * r);
+          const a = rnd(0, 6.28), r = rnd(2, 7.5);
+          c.mesh.position.set(-38 + Math.cos(a) * r, 0, -38 + Math.sin(a) * r);
           c.mesh.scale.setScalar(1);
           c.valor = 5 + (Math.random() * 9 | 0);
         }
@@ -220,6 +221,7 @@ export function crearEconomia(escena, mundo, jugador, ui, npcs = null) {
       // si el jugador se mueve, se levanta
       if (jugador.estado.moviendose) {
         estado.relajando = false;
+        jugador.estado.sentado = false;
         jugador.personaje.setEstado('idle');
       } else {
         estado.animo = Math.min(100, estado.animo + dt * (bonusRol() === 'animo' ? 8 : 4));

@@ -1,5 +1,6 @@
 // ============ ALICE CITY — Jugador: controles y cámara tercera persona ============
 import * as THREE from 'three';
+import { col } from './colisiones.js';
 
 export function crearJugador(escena, camara, dom, personajeApi, spawn) {
   const estado = {
@@ -88,11 +89,8 @@ export function crearJugador(escena, camara, dom, personajeApi, spawn) {
         .addScaledVector(derecha, mx);
       if (dir.lengthSq() > 0) {
         dir.normalize();
-        pj.grupo.position.addScaledVector(dir, vel * dt);
-        if (limites) {
-          pj.grupo.position.x = Math.max(limites.minX, Math.min(limites.maxX, pj.grupo.position.x));
-          pj.grupo.position.z = Math.max(limites.minZ, Math.min(limites.maxZ, pj.grupo.position.z));
-        }
+        // colisión con deslizamiento por ejes + límites del mundo
+        if (!estado.sentado) col.mover(pj.grupo.position, dir.x * vel * dt, dir.z * vel * dt, .45);
         const ang = Math.atan2(dir.x, dir.z);
         let dif = ang - pj.grupo.rotation.y;
         while (dif > Math.PI) dif -= 2 * Math.PI;
@@ -103,6 +101,8 @@ export function crearJugador(escena, camara, dom, personajeApi, spawn) {
     } else {
       pj.update(t, false);
     }
+    // altura del suelo (muelle del lago) salvo cuando está sentado
+    if (!estado.sentado) pj.grupo.position.y = col.alto(pj.grupo.position.x, pj.grupo.position.z);
 
     // cámara en tercera persona
     const foco = pj.grupo.position.clone().add(new THREE.Vector3(0, 1.4, 0));
