@@ -334,6 +334,11 @@ export function drawProp(p, t) {
     case 'taxi':
       drawCarBody(p.gx, p.gy, 0, '#ffd23f', t, true);
       break;
+    case 'auto': {
+      const cols = ['#e63946', '#00b4d8', '#ffd23f', '#2a9d8f'];
+      drawCarBody(p.gx, p.gy, 0, cols[(p.data && p.data.i || 0) % 4] || (p.data && p.data.c) || '#e63946', t, true);
+      break;
+    }
   }
 }
 

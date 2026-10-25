@@ -19,7 +19,9 @@ export const QUESTS = [
   { id: 'P7', t: 'Turno en el Server Room', d: 'Activa los 3 racks del server room del HQ (tecla E).', alc: 18, giver: 'Ada', oculta: true },
   { id: 'P8', t: 'Ronda del cinturón', d: 'Ronda completa por las 4 esquinas del cinturón verde.', alc: 25, spots: ['q8a', 'q8b', 'q8c', 'q8d'], giver: null },
   { id: 'P9', t: 'Puertas de la ciudad', d: 'Visita las puertas de DATA HUB, ANALYSIS y SRV-7.', alc: 15, spots: ['doorHub', 'doorAnalysis', 'doorSrv'], giver: null },
-  { id: 'P10', t: 'Vida de vecino', d: 'Visita la CASA-7, la CASA-12 y tu APTO del distrito sur.', alc: 20, spots: ['doorCasa7', 'doorCasa12', 'doorApto'], giver: null }
+  { id: 'P10', t: 'Vida de vecino', d: 'Visita la CASA-7, la CASA-12 y tu APTO del distrito Mercado.', alc: 20, spots: ['doorCasa7', 'doorCasa12', 'doorApto'], giver: null },
+  { id: 'P11', t: 'Rutina de barrio', d: 'Pasa por la CAFETERÍA, el GYM NEÓN y las RESIDENCIAS.', alc: 22, spots: ['doorCafe', 'doorGym', 'doorResid'], giver: null },
+  { id: 'P12', t: 'Paseo en el Parque Sur', d: 'Recorre los 3 puntos del Parque Sur de la metrópoli.', alc: 15, spots: ['q12a', 'q12b', 'q12c'], giver: null }
 ];
 
 export function qEstado(id) {
@@ -300,14 +302,15 @@ function equipar(id) {
 // ---- render AGENTES ----
 function zonaDe(a) {
   const gx = a.gx, gy = a.gy;
-  if (gx < 3) return 'cinturón O';
-  if (gx > 20) return 'cinturón E';
-  if (gy < 3) return 'cinturón N';
-  if (gy > 20) return 'cinturón S';
-  if (gx < 11 && gy < 11) return 'Plaza Central';
-  if (gx >= 11 && gy < 11) return 'Tech Campus';
-  if (gx < 11) return 'Mercado';
-  return 'Logística';
+  if (gx < 5) return 'cinturón O';
+  if (gx >= 34) return 'cinturón E';
+  if (gy < 5) return 'cinturón N';
+  if (gy >= 34) return 'cinturón S';
+  const c = gx < 14 ? 0 : gx < 23 ? 1 : 2;
+  const r = gy < 14 ? 0 : gy < 23 ? 1 : 2;
+  return [['Plaza Central', 'Tech Campus', 'Innovación'],
+          ['Mercado', 'Residencial', 'Logística'],
+          ['Parque Sur', 'Clínica Sur', 'Plaza Este']][r][c];
 }
 function renderAgentes() {
   const el = document.getElementById('agentes-list');
@@ -347,30 +350,40 @@ function renderBilletera() {
 }
 
 // ---- minimapa ----
+const CIUDAD_N = 40;
 export function drawMini() {
   const cv = document.getElementById('mini');
   if (!cv) return;
   const c2 = cv.getContext('2d');
-  const S = 8;
   c2.fillStyle = '#0a0d1a'; c2.fillRect(0, 0, cv.width, cv.height);
   if (G.modo !== 'city') {
     const m = getCurrent();
-    c2.fillStyle = '#2c3554';
-    c2.fillRect(20, 30, cv.width - 40, cv.height - 60);
+    if (!m) return;
+    // plano del interior: muros + punto del jugador (escalado al mapa)
+    const s = Math.max(4, Math.min(13, Math.floor(176 / Math.max(m.w, m.h))));
+    const ox = (cv.width - m.w * s) / 2, oy = (cv.height - m.h * s) / 2;
+    c2.fillStyle = '#1a2036';
+    c2.fillRect(ox, oy, m.w * s, m.h * s);
+    for (let y = 0; y < m.h; y++) for (let x = 0; x < m.w; x++) {
+      const tt = m.tiles[y * m.w + x];
+      if (tt === 5) { c2.fillStyle = '#3a4668'; c2.fillRect(ox + x * s, oy + y * s, s - 1, s - 1); }
+      else if (tt === 6) { c2.fillStyle = 'rgba(0,240,255,0.6)'; c2.fillRect(ox + x * s, oy + y * s, s - 1, s - 1); }
+    }
     c2.fillStyle = '#00f0ff'; c2.font = 'bold 9px monospace'; c2.textAlign = 'center';
-    c2.fillText(m ? m.name : 'INTERIOR', cv.width / 2, 50);
-    c2.fillStyle = '#0a0d1a'; c2.textAlign = 'left';
-    c2.font = '8px monospace';
-    c2.fillText('sal por el tapete ↓', cv.width / 2 - 44, cv.height / 2 + 40);
+    c2.fillText(m.name, cv.width / 2, oy > 22 ? oy - 8 : 14);
     c2.fillStyle = '#00f0ff';
-    c2.fillRect(player.gx * 16 + 12, player.gy * 16 + 24, 5, 5);
+    c2.fillRect(ox + player.gx * s - 2, oy + player.gy * s - 2, 5, 5);
+    c2.strokeStyle = 'rgba(0,240,255,0.8)';
+    c2.strokeRect(ox + player.gx * s - 4, oy + player.gy * s - 4, 8, 8);
+    c2.textAlign = 'left';
     return;
   }
-  // tiles simplificados
-  for (let y = 0; y < 24; y++) for (let x = 0; x < 24; x++) {
+  // tiles simplificados (metrópoli 40×40)
+  const S = cv.width / CIUDAD_N;
+  for (let y = 0; y < CIUDAD_N; y++) for (let x = 0; x < CIUDAD_N; x++) {
     const t = window.__aliceTileAt ? window.__aliceTileAt(x, y) : 0;
     c2.fillStyle = t === 1 || t === 4 ? '#232838' : (t === 2 || t === 3 ? '#2e3a5c' : '#16301f');
-    c2.fillRect(x * S, y * S, S - 1, S - 1);
+    c2.fillRect(x * S, y * S, S, S);
   }
   // npcs
   c2.fillStyle = '#e8e8f0';
@@ -378,11 +391,17 @@ export function drawMini() {
   // coches
   c2.fillStyle = '#ff9a3d';
   for (const car of (window.__aliceCars || [])) c2.fillRect(car.gx * S - 1.5, car.gy * S - 1.5, 3, 3);
+  // puertas con interior
+  c2.fillStyle = 'rgba(0,240,255,0.9)';
+  for (const p of (window.__alicePuertas || [])) {
+    const s = window.__aliceSpots && window.__aliceSpots[p.spot];
+    if (s) c2.fillRect(s.gx * S - 1, s.gy * S - 1, 2.5, 2.5);
+  }
   // jugador
   c2.fillStyle = '#00f0ff';
-  c2.fillRect(player.gx * S - 2.5, player.gy * S - 2.5, 5, 5);
+  c2.fillRect(player.gx * S - 2, player.gy * S - 2, 4, 4);
   c2.strokeStyle = 'rgba(0,240,255,0.8)';
-  c2.strokeRect(player.gx * S - 4, player.gy * S - 4, 8, 8);
+  c2.strokeRect(player.gx * S - 3.5, player.gy * S - 3.5, 7, 7);
 }
 
 // ---- chat del jugador ----

@@ -1,8 +1,8 @@
 // ============================================================
-// ALICE CITY v6 — INTERIORES MULTI-MAPA
-// Cada puerta de la ciudad abre su propio interior: HQ,
-// Data Hub, Neural Core, Analysis, Mercado, TU APTO,
-// Logística, Labs, SRV-7 y las casas del cinturón.
+// ALICE CITY v7 — INTERIORES CON ARQUITECTURA REAL
+// Muros internos con puertas, BAÑO (inodoro/ducha/lavabo),
+// cocina, dormitorio y salón separados. Vida diaria de agentes:
+// cafetería, gym, clínica y residencias. 17 mapas en total.
 // ============================================================
 import { G, isoX, isoY, hash2, ctx as ctx2 } from './engine.js';
 import { TW, TH } from './engine.js';
@@ -37,6 +37,13 @@ function suelo(m, x0, y0, x1, y1, t) {
 function solidBox(m, x0, y0, x1, y1) {
   for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) m.solid[ii(m, x, y)] = 1;
 }
+// muro interno con vanos de puerta (gaps = [[x,y],…])
+function muro(m, x0, y0, x1, y1, gaps = []) {
+  for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
+    if (gaps.some(g => g[0] === x && g[1] === y)) continue;
+    m.tiles[ii(m, x, y)] = 5; m.solid[ii(m, x, y)] = 1;
+  }
+}
 function P(m, tipo, gx, gy, solido = true, data = null) {
   m.props.push({ tipo, gx, gy, data });
   if (solido) m.solid[ii(m, Math.floor(gx), Math.floor(gy))] = 1;
@@ -50,6 +57,21 @@ function salida(m, x0, x1, y) {
   m.exit = { x0, x1, y };
 }
 const PAL = (skin, hair, jacket, pants) => ({ skin, hair, jacket, pants });
+
+// ============================================================
+// KIT DE BAÑO (vida diaria)
+// ============================================================
+function bano(m, x0, y0, conLavabo = true) {
+  // x0..x0+2 mínimo (3 tiles de ancho), muro norte detrás
+  P(m, 'inodoro', x0 + 0.45, y0 + 0.45, true);
+  if (conLavabo) {
+    P(m, 'lavabo', x0 + 1.45, y0 + 0.45, true);
+    P(m, 'espejo', x0 + 1.45, 0.94, false);
+  }
+  P(m, 'ducha', x0 + 2.5, y0 + 0.7, true);
+  solidBox(m, x0 + 2, y0, x0 + 2, y0 + 1);
+  IT(m, 'ducha', x0 + 2.5, y0 + 2.0, 'DUCHARSE (+energía)');
+}
 
 // ============================================================
 // CONSTRUCTORES
@@ -94,7 +116,7 @@ function buildHQ() {
 
 function buildHub() {
   const m = room('hub', 14, 10, 'DATA HUB', [7, 8.4]);
-  suelo(m, 1, 1, 12, 8, 8);                       // moqueta cian
+  suelo(m, 1, 1, 12, 8, 8);
   P(m, 'pantalla', 3, 0.9, false, { c: 0 }); P(m, 'pantalla', 7, 0.9, false, { c: 1 }); P(m, 'pantalla', 11, 0.9, false, { c: 2 });
   for (const d of [[3, 2], [5, 2], [9, 2], [11, 2]]) P(m, 'desk', d[0], d[1], true);
   P(m, 'consola', 2.5, 4.5, true); P(m, 'consola', 11.5, 4.5, true);
@@ -109,7 +131,7 @@ function buildHub() {
 
 function buildNeural() {
   const m = room('neural', 12, 10, 'NEURAL CORE', [6, 8.4]);
-  suelo(m, 1, 1, 10, 8, 10);                      // metal
+  suelo(m, 1, 1, 10, 8, 10);
   P(m, 'reactor', 5.5, 4.3, true, { w: 2, d: 1.6 });
   solidBox(m, 5, 4, 6, 5);
   P(m, 'matraz', 2.5, 2.5, true); P(m, 'matraz', 3.5, 2.5, true); P(m, 'matraz', 9, 2.5, true);
@@ -124,7 +146,7 @@ function buildNeural() {
 
 function buildAnalysis() {
   const m = room('analysis', 14, 10, 'ANALYSIS CENTER', [7, 8.4]);
-  suelo(m, 1, 1, 12, 8, 1);                       // alfombra azul
+  suelo(m, 1, 1, 12, 8, 1);
   P(m, 'pizarra', 4, 0.9, false); P(m, 'pizarra', 10, 0.9, false);
   for (const d of [[3, 3], [5, 3], [9, 3], [11, 3]]) P(m, 'desk', d[0], d[1], true);
   P(m, 'mesa', 7, 6, true, { w: 2.6, d: 1 });
@@ -139,7 +161,7 @@ function buildAnalysis() {
 
 function buildMercado() {
   const m = room('mercado', 16, 11, 'MERCADO', [8, 9.4]);
-  suelo(m, 1, 1, 14, 9, 9);                       // baldosa clara
+  suelo(m, 1, 1, 14, 9, 9);
   P(m, 'puesto', 3, 2.8, true, { c: 0 }); P(m, 'puesto', 6, 2.8, true, { c: 1 });
   P(m, 'puesto', 9, 2.8, true, { c: 2 }); P(m, 'puesto', 12, 2.8, true, { c: 0 });
   P(m, 'pila', 14.5, 3, true); P(m, 'pila', 1.5, 6, true);
@@ -152,37 +174,279 @@ function buildMercado() {
   NPCa(m, { name: 'Any', gx: 13.2, gy: 6.5, estatico: true, seed: 16, pal: PAL('#f0c9a0', '#5a3a1a', '#2a9d8f', '#20263c'), colorTag: '#39ff88' });
 }
 
+// ============================================================
+// TU APTO — vivienda completa: salón + cocina + dormitorio + BAÑO
+// ============================================================
 function buildApto() {
-  const m = room('apto', 12, 9, 'TU APTO', [6, 7.3]);
-  suelo(m, 1, 1, 10, 7, 0);                       // madera
-  suelo(m, 3, 3, 8, 5, 11);                       // alfombra terracota
-  // zona dormir
-  P(m, 'cama', 2.3, 1.7, true); solidBox(m, 2, 1, 2, 2);
-  P(m, 'mesanight', 3.5, 1.6, true);
-  P(m, 'lampara', 1.6, 2.6, true);
-  IT(m, 'cama', 2.5, 3.0, 'DORMIR (recuperar energía)');
-  // armario + pc
-  P(m, 'armario', 10.4, 1.5, true);
-  IT(m, 'armario', 10.4, 2.4, 'ABRIR ARMARIO (cambiar outfit)');
-  P(m, 'pc_casa', 8.6, 1.6, true);
-  IT(m, 'pc', 8.6, 2.5, 'VER CONTRATOS');
-  // salón
-  P(m, 'tv', 5.5, 0.9, false);
-  P(m, 'sofa', 5.5, 5.6, true);
-  P(m, 'mesita', 5.5, 4.4, true);
+  const m = room('apto', 18, 13, 'TU APTO', [8.5, 11.3]);
+  suelo(m, 1, 1, 16, 11, 0);                          // madera en todo
+  suelo(m, 1, 1, 6, 3, 9);                            // cocina baldosa
+  suelo(m, 8, 1, 11, 3, 13);                          // baño cerámica
+  suelo(m, 3, 6, 8, 8, 11);                           // alfombra salón
+  // --- muros internos con puertas ---
+  muro(m, 1, 4, 16, 4, [[3, 4], [9, 4], [14, 4]]);    // banda norte (puertas cocina/baño/dorm)
+  muro(m, 7, 1, 7, 3);                                // cocina | baño
+  muro(m, 12, 1, 12, 3);                              // baño | dormitorio
+  // --- COCINA ---
+  P(m, 'refri', 1.4, 1.45, true);
+  P(m, 'horno', 2.4, 1.45, true);
+  IT(m, 'cocina', 2.4, 2.4, 'COCINAR (+energía)');
+  P(m, 'fregadero', 3.4, 1.45, true);
+  P(m, 'barra', 5.4, 1.5, true);
+  P(m, 'mesa', 4.5, 2.3, true, { w: 1.6, d: 0.8 });
+  P(m, 'silla', 3.7, 2.8, true); P(m, 'silla', 5.3, 2.8, true);
+  // --- BAÑO ---
+  bano(m, 8, 1.55, true);
+  // --- DORMITORIO ---
+  P(m, 'cama', 13.9, 1.75, true); solidBox(m, 13, 1, 14, 2);
+  IT(m, 'cama', 13.5, 2.9, 'DORMIR (recuperar energía)');
+  P(m, 'mesanight', 15.2, 1.45, true);
+  P(m, 'armario', 16.4, 1.45, true);
+  IT(m, 'armario', 16.4, 2.4, 'ABRIR ARMARIO (cambiar outfit)');
+  // --- SALÓN ---
+  P(m, 'tv', 5.5, 4.95, false);
+  P(m, 'sofa', 5.5, 6.55, true);
+  P(m, 'mesita', 5.5, 5.55, true);
+  P(m, 'silla', 8.5, 6.5, true);
+  P(m, 'estante', 1.45, 5.5, true); P(m, 'estante', 16.45, 5.5, true);
+  P(m, 'pc_casa', 16.4, 6.7, true);
+  IT(m, 'pc', 16.4, 7.6, 'VER CONTRATOS');
+  P(m, 'planta', 1.45, 10.4, true); P(m, 'planta', 16.5, 10.4, true);
+  P(m, 'cuadro', 10.5, 4.94, false);
+  P(m, 'reloj', 13.5, 4.94, false);
+  // --- ENTRADA ---
+  P(m, 'mesita', 7.4, 10.4, true);                    // zapatero
+  salida(m, 8, 9, 12);
+  NPCa(m, { name: 'Gato Bot', gx: 9.5, gy: 7.5, gato: true, estatico: true, seed: 17, pal: PAL('#e8a04a', '#e8a04a', '#e8a04a', '#c07a30'), colorTag: '#ff9a3d' });
+}
+
+// ============================================================
+// CASAS DE BARRIO — cocina + baño + dormitorio + salón
+// ============================================================
+function buildCasa7() {
+  const m = room('casa7', 14, 11, 'CASA-7', [6.5, 9.3]);
+  suelo(m, 1, 1, 12, 9, 0);
+  suelo(m, 1, 1, 6, 3, 9);                            // cocina
+  suelo(m, 8, 1, 9, 3, 13);                           // baño
+  muro(m, 1, 4, 12, 4, [[3, 4], [9, 4], [11, 4]]);
+  muro(m, 7, 1, 7, 3);
+  muro(m, 10, 1, 10, 3);
   // cocina
-  P(m, 'barra', 1.4, 6.4, true);
-  P(m, 'horno', 1.4, 5.5, true);
-  P(m, 'refri', 1.4, 7.3, true);
-  P(m, 'planta', 10.5, 7.3, true);
-  P(m, 'reloj', 7.5, 0.9, false);
-  salida(m, 5, 6, 8);
-  NPCa(m, { name: 'Gato Bot', gx: 6.5, gy: 5.6, gato: true, estatico: true, seed: 17, pal: PAL('#e8a04a', '#e8a04a', '#e8a04a', '#c07a30'), colorTag: '#ff9a3d' });
+  P(m, 'refri', 1.4, 1.45, true);
+  P(m, 'horno', 2.4, 1.45, true);
+  IT(m, 'cocina', 2.4, 2.4, 'COCINAR (+energía)');
+  P(m, 'fregadero', 3.4, 1.45, true);
+  P(m, 'barra', 5.3, 1.5, true);
+  // baño (compacto: inodoro + ducha)
+  P(m, 'inodoro', 8.45, 1.45, true);
+  P(m, 'ducha', 9.5, 1.7, true);
+  solidBox(m, 9, 1, 9, 1);
+  IT(m, 'ducha', 9.4, 2.6, 'DUCHARSE (+energía)');
+  // dormitorio
+  P(m, 'cama', 11.9, 1.75, true); solidBox(m, 11, 1, 12, 2);
+  IT(m, 'cama', 11.9, 2.9, 'DORMIR (recuperar energía)');
+  P(m, 'mesanight', 12.45, 2.6, true);
+  // salón
+  P(m, 'tv', 4.5, 4.95, false);
+  P(m, 'sofa', 4.5, 6.5, true);
+  P(m, 'mesita', 4.5, 5.5, true);
+  P(m, 'estante', 12.4, 5.5, true);
+  P(m, 'planta', 1.4, 8.4, true);
+  P(m, 'cuadro', 7, 4.94, false);
+  salida(m, 6, 7, 10);
+  NPCa(m, { name: 'Doña Lu', gx: 6.5, gy: 6.6, estatico: true, seed: 23, pal: PAL('#e8b88a', '#b03a2a', '#8a3a5a', '#232630'), colorTag: '#ff2fb3' });
+}
+
+function buildCasa12() {
+  const m = room('casa12', 14, 11, 'CASA-12', [6.5, 9.3]);
+  suelo(m, 1, 1, 12, 9, 0);
+  suelo(m, 1, 1, 5, 3, 9);
+  suelo(m, 7, 1, 8, 3, 13);
+  muro(m, 1, 4, 12, 4, [[3, 4], [8, 4], [10, 4]]);
+  muro(m, 6, 1, 6, 3);
+  muro(m, 9, 1, 9, 3);
+  // cocina
+  P(m, 'fregadero', 1.45, 1.45, true);
+  P(m, 'horno', 2.4, 1.45, true);
+  IT(m, 'cocina', 2.4, 2.4, 'COCINAR (+energía)');
+  P(m, 'refri', 3.4, 1.45, true);
+  P(m, 'barra', 4.6, 1.5, true);
+  // baño
+  P(m, 'inodoro', 7.45, 1.45, true);
+  P(m, 'ducha', 8.5, 1.7, true);
+  solidBox(m, 8, 1, 8, 1);
+  IT(m, 'ducha', 8.4, 2.6, 'DUCHARSE (+energía)');
+  // dormitorio
+  P(m, 'cama', 10.9, 1.75, true); solidBox(m, 10, 1, 11, 2);
+  IT(m, 'cama', 10.9, 2.9, 'DORMIR (recuperar energía)');
+  P(m, 'mesanight', 12.4, 1.45, true);
+  // salón-comedor
+  P(m, 'mesa', 4, 6.5, true, { w: 1.8, d: 0.9 });
+  P(m, 'silla', 3.2, 7.3, true); P(m, 'silla', 4.8, 7.3, true);
+  P(m, 'tv', 8.5, 4.95, false);
+  P(m, 'sofa', 8.5, 6.6, true);
+  P(m, 'planta', 12.4, 8.4, true);
+  P(m, 'cuadro', 6.5, 4.94, false);
+  salida(m, 6, 7, 10);
+  NPCa(m, { name: 'Otto', gx: 5.5, gy: 5.6, estatico: true, seed: 24, pal: PAL('#c98d5e', '#151824', '#2a9d8f', '#1e2130'), colorTag: '#2a9d8f' });
+}
+
+// fábrica para CASA-3 / CASA-9 (suburbios del cinturón)
+function buildCasaGenerica(id, name, residente, colorTag, seed) {
+  const m = room(id, 14, 11, name, [6.5, 9.3]);
+  suelo(m, 1, 1, 12, 9, 0);
+  suelo(m, 1, 1, 5, 3, 9);
+  suelo(m, 7, 1, 8, 3, 13);
+  muro(m, 1, 4, 12, 4, [[3, 4], [8, 4], [10, 4]]);
+  muro(m, 6, 1, 6, 3);
+  muro(m, 9, 1, 9, 3);
+  P(m, 'refri', 1.4, 1.45, true);
+  P(m, 'horno', 2.4, 1.45, true);
+  IT(m, 'cocina', 2.4, 2.4, 'COCINAR (+energía)');
+  P(m, 'fregadero', 3.4, 1.45, true);
+  P(m, 'barra', 4.6, 1.5, true);
+  P(m, 'inodoro', 7.45, 1.45, true);
+  P(m, 'ducha', 8.5, 1.7, true);
+  solidBox(m, 8, 1, 8, 1);
+  IT(m, 'ducha', 8.4, 2.6, 'DUCHARSE (+energía)');
+  P(m, 'cama', 10.9, 1.75, true); solidBox(m, 10, 1, 11, 2);
+  IT(m, 'cama', 10.9, 2.9, 'DORMIR (recuperar energía)');
+  P(m, 'mesanight', 12.4, 1.45, true);
+  P(m, 'sofa', 5.5, 6.6, true);
+  P(m, 'tv', 5.5, 4.95, false);
+  P(m, 'mesita', 5.5, 5.5, true);
+  P(m, 'planta', 12.4, 8.4, true);
+  P(m, 'cuadro', 8, 4.94, false);
+  salida(m, 6, 7, 10);
+  NPCa(m, {
+    name: residente, gx: 7.5, gy: 6.5, estatico: true, seed,
+    pal: PAL('#e8b88a', '#2c2c3c', '#6a3a8a', '#232630'), colorTag
+  });
+}
+
+// ============================================================
+// CAFETERÍA NEÓN — agentes desayunando antes del turno
+// ============================================================
+function buildCafeteria() {
+  const m = room('cafeteria', 14, 10, 'CAFETERÍA NEÓN', [6.5, 8.3]);
+  suelo(m, 1, 1, 12, 8, 9);
+  // barra + máquina + vitrina
+  P(m, 'barra', 2.5, 1.5, true); P(m, 'barra', 4.5, 1.5, true); P(m, 'barra', 6.5, 1.5, true);
+  P(m, 'maquina', 1.45, 1.45, true);
+  IT(m, 'cafetera', 1.45, 2.5, 'PEDIR CAFÉ (+12 energía)');
+  P(m, 'vitrina', 8.5, 1.5, true);
+  P(m, 'pizarra', 4, 0.92, false);                     // menú del día
+  P(m, 'guirnalda', 7, 0.9, false);
+  // mesas con sillas
+  P(m, 'mesa', 3, 5, true, { w: 1.6, d: 0.9 });
+  P(m, 'silla', 2.2, 5.8, true); P(m, 'silla', 3.8, 5.8, true);
+  P(m, 'mesa', 7, 5, true, { w: 1.6, d: 0.9 });
+  P(m, 'silla', 6.2, 5.8, true); P(m, 'silla', 7.8, 5.8, true);
+  P(m, 'mesa', 11, 4, true, { w: 1.6, d: 0.9 });
+  P(m, 'silla', 10.2, 4.8, true); P(m, 'silla', 11.8, 4.8, true);
+  P(m, 'mesa', 11, 7, true, { w: 1.6, d: 0.9 });
+  P(m, 'silla', 10.2, 7.8, true);
+  P(m, 'planta', 13.4, 1.4, true); P(m, 'planta', 1.4, 8.4, true);
+  salida(m, 6, 7, 9);
+  NPCa(m, { name: 'Tara', gx: 4.5, gy: 1.35, estatico: true, seed: 25, pal: PAL('#f0c9a0', '#5a3a1a', '#e63946', '#1e2130'), colorTag: '#ff9a3d' });
+  NPCa(m, { name: 'Nave', gx: 7, gy: 4.4, sentado: true, estatico: true, seed: 26, pal: PAL('#c98d5e', '#0f0f1a', '#2a7a6a', '#1e2130'), colorTag: '#39ff88' });
+}
+
+// ============================================================
+// GYM NEÓN — agentes entrenando (vida diaria)
+// ============================================================
+function buildGym() {
+  const m = room('gym', 14, 10, 'GYM NEÓN', [6.5, 8.3]);
+  suelo(m, 1, 1, 12, 8, 14);
+  // cintas de correr
+  P(m, 'caminadora', 2.5, 2.2, true);
+  P(m, 'caminadora', 4.5, 2.2, true);
+  P(m, 'caminadora', 6.5, 2.2, true);
+  IT(m, 'gym', 4.5, 3.3, 'ENTRENAR (energía −6)');
+  // pesas y banco
+  P(m, 'estante', 12.4, 2, true); P(m, 'estante', 12.4, 3, true);
+  P(m, 'pesa', 9.5, 5.5, true);
+  P(m, 'pesa', 10.4, 5.6, true);
+  P(m, 'silla', 11.3, 5.5, true);
+  // espejos en el muro norte
+  P(m, 'espejo', 2.5, 0.92, false); P(m, 'espejo', 5, 0.92, false); P(m, 'espejo', 7.5, 0.92, false);
+  P(m, 'vending', 13.3, 7.4, true, { c: 0 });
+  P(m, 'planta', 1.4, 8.4, true);
+  salida(m, 6, 7, 9);
+  NPCa(m, { name: 'Rocco', gx: 8.5, gy: 4.4, estatico: true, seed: 27, pal: PAL('#d9a06b', '#151824', '#ffd23f', '#26202e'), colorTag: '#ffd23f' });
+  NPCa(m, { name: 'Agente Fit', gx: 2.5, gy: 6, speed: 0.7, seed: 28, pal: PAL('#e8b88a', '#b03a2a', '#39ff88', '#1a1d30'), colorTag: '#39ff88', path: [[2.5, 6], [11.5, 6]] });
+}
+
+// ============================================================
+// CLÍNICA ALICE — salud de los agentes
+// ============================================================
+function buildClinica() {
+  const m = room('clinica', 14, 11, 'CLÍNICA ALICE', [6.5, 9.3]);
+  suelo(m, 1, 1, 12, 9, 13);
+  // zona de camillas
+  P(m, 'camilla', 11.4, 2.5, true);
+  P(m, 'camilla', 11.4, 4.5, true);
+  IT(m, 'camilla', 10.4, 3.5, 'REVISACIÓN (energía al 100)');
+  P(m, 'pantalla', 9, 0.92, false, { c: 1 });          // signos vitales
+  P(m, 'cruz', 5, 0.92, false);
+  P(m, 'estante', 1.45, 2, true); P(m, 'estante', 1.45, 3, true);
+  // recepción + espera
+  P(m, 'recep', 3.5, 7.5, true);
+  P(m, 'silla', 5.5, 8.5, true); P(m, 'silla', 6.5, 8.5, true); P(m, 'silla', 7.5, 8.5, true);
+  P(m, 'planta', 13.4, 8.4, true); P(m, 'planta', 1.4, 5.5, true);
+  salida(m, 6, 7, 10);
+  NPCa(m, { name: 'Dra. Luna', gx: 11, gy: 6.4, estatico: true, seed: 29, pal: PAL('#e8b88a', '#e8e8f0', '#e8f0ff', '#1a1d30'), colorTag: '#39ff88' });
+  NPCa(m, { name: 'Nurse Pip', gx: 2.5, gy: 5, speed: 0.8, seed: 30, pal: PAL('#c98d5e', '#5a3a1a', '#7ae7ff', '#1e2130'), colorTag: '#7ae7ff', path: [[2.5, 5], [8.5, 5]] });
+}
+
+// ============================================================
+// RESIDENCIAS — el apto del agente Vek (trabaja desde casa)
+// ============================================================
+function buildApto2() {
+  const m = room('apto2', 16, 12, 'APTO DE VEK · RESIDENCIAS', [7.5, 10.3]);
+  suelo(m, 1, 1, 14, 10, 0);
+  suelo(m, 1, 1, 5, 3, 9);
+  suelo(m, 7, 1, 9, 3, 13);
+  suelo(m, 3, 6, 7, 8, 11);
+  muro(m, 1, 4, 14, 4, [[3, 4], [8, 4], [12, 4]]);
+  muro(m, 6, 1, 6, 3);
+  muro(m, 10, 1, 10, 3);
+  // cocina
+  P(m, 'refri', 1.4, 1.45, true);
+  P(m, 'horno', 2.4, 1.45, true);
+  IT(m, 'cocina', 2.4, 2.4, 'COCINAR (+energía)');
+  P(m, 'fregadero', 3.4, 1.45, true);
+  P(m, 'mesa', 4.5, 2.3, true, { w: 1.6, d: 0.8 });
+  P(m, 'silla', 3.7, 2.8, true);
+  // baño
+  P(m, 'inodoro', 7.45, 1.45, true);
+  P(m, 'lavabo', 8.45, 1.45, true);
+  P(m, 'espejo', 8.45, 0.94, false);
+  P(m, 'ducha', 9.5, 1.7, true);
+  solidBox(m, 9, 1, 9, 1);
+  IT(m, 'ducha', 8.4, 2.6, 'DUCHARSE (+energía)');
+  // dormitorio
+  P(m, 'cama', 11.9, 1.75, true); solidBox(m, 11, 1, 12, 2);
+  IT(m, 'cama', 11.9, 2.9, 'DORMIR (recuperar energía)');
+  P(m, 'mesanight', 13.3, 1.45, true);
+  P(m, 'armario', 14.4, 1.45, true);
+  IT(m, 'accion', 14.4, 2.4, 'ARMARIO DE VEK', { msg: 'Chamarras ordenadas por color · huele a café' });
+  // salón + oficina en casa
+  P(m, 'tv', 4.5, 4.95, false);
+  P(m, 'sofa', 4.5, 6.6, true);
+  P(m, 'mesita', 4.5, 5.5, true);
+  P(m, 'estante', 1.45, 5.5, true);
+  P(m, 'pc_casa', 13.4, 6.7, true);
+  P(m, 'planta', 1.45, 10.4, true); P(m, 'planta', 14.5, 10.4, true);
+  P(m, 'cuadro', 9, 4.94, false);
+  salida(m, 7, 8, 11);
+  NPCa(m, { name: 'Vek', gx: 13.4, gy: 6.0, sentado: true, estatico: true, seed: 31, pal: PAL('#c98d5e', '#0f0f1a', '#7a9bff', '#1a1d30'), colorTag: '#7a9bff' });
+  NPCa(m, { name: 'Bit', gx: 9, gy: 8.5, gato: true, estatico: true, seed: 32, pal: PAL('#9aa3c0', '#9aa3c0', '#9aa3c0', '#6a7386'), colorTag: '#9fd8ff' });
 }
 
 function buildLogistica() {
   const m = room('logistica', 14, 11, 'LOGÍSTICA', [7, 9.4]);
-  suelo(m, 1, 1, 12, 9, 7);                       // loseta gris
+  suelo(m, 1, 1, 12, 9, 7);
   for (const e of [[2, 2], [4, 2], [6, 2], [8, 2], [10, 2], [2, 5], [4, 5], [6, 5], [8, 5], [10, 5]]) P(m, 'estante', e[0], e[1], true);
   P(m, 'pila', 12.5, 3, true); P(m, 'pila', 12.5, 6, true); P(m, 'pila', 1.5, 8, true);
   P(m, 'cinta', 7.5, 8, true, { w: 5 }); solidBox(m, 6, 8, 9, 8);
@@ -195,7 +459,7 @@ function buildLogistica() {
 
 function buildLabs() {
   const m = room('labs', 14, 10, 'AGENT LABS', [7, 8.4]);
-  suelo(m, 1, 1, 12, 8, 10);                      // metal
+  suelo(m, 1, 1, 12, 8, 10);
   P(m, 'mesa_lab', 2.8, 3, true); P(m, 'mesa_lab', 3.8, 3, true);
   P(m, 'mesa_lab', 10.2, 3, true); P(m, 'mesa_lab', 11.2, 3, true);
   P(m, 'matraz', 5, 2, true); P(m, 'matraz', 9, 2, true); P(m, 'matraz', 7, 4.6, true);
@@ -210,7 +474,7 @@ function buildLabs() {
 
 function buildSrv7() {
   const m = room('srv7', 10, 8, 'SRV-7', [5, 6.3]);
-  suelo(m, 1, 1, 8, 6, 2);                        // alfombra verde
+  suelo(m, 1, 1, 8, 6, 2);
   for (const r of [[1.5, 1.5], [2.5, 1.5], [3.5, 1.5], [1.5, 3.5], [2.5, 3.5], [3.5, 3.5], [7.5, 1.5], [8.4, 1.5]]) P(m, 'rack', r[0], r[1], true);
   P(m, 'consola', 6.5, 4.5, true);
   salida(m, 4, 5, 7);
@@ -218,45 +482,13 @@ function buildSrv7() {
   NPCa(m, { name: 'Teco', gx: 1.5, gy: 5.5, speed: 0.8, seed: 22, pal: PAL('#e8b88a', '#101322', '#9aa3c0', '#1a1d30'), colorTag: '#9fd8ff', path: [[1.5, 5.5], [4.5, 5.5], [4.5, 2.5], [1.5, 2.5]] });
 }
 
-function buildCasa7() {
-  const m = room('casa7', 11, 9, 'CASA-7', [5, 7.3]);
-  suelo(m, 1, 1, 9, 7, 0);                        // madera
-  suelo(m, 3, 3, 6, 5, 11);                       // alfombra
-  P(m, 'tv', 4.5, 0.9, false);
-  P(m, 'sofa', 4.5, 5.6, true);
-  P(m, 'mesita', 4.5, 4.4, true);
-  P(m, 'cama', 8.4, 1.7, true); solidBox(m, 8, 1, 8, 2);
-  P(m, 'mesanight', 9.4, 1.6, true);
-  P(m, 'lampara', 7.5, 1.6, true);
-  P(m, 'barra', 1.4, 6.4, true);
-  P(m, 'refri', 1.4, 5.5, true);
-  P(m, 'planta', 9.5, 7.3, true);
-  P(m, 'cuadro', 7, 0.9, false);
-  salida(m, 4, 5, 8);
-  NPCa(m, { name: 'Doña Lu', gx: 6.5, gy: 3.6, estatico: true, seed: 23, pal: PAL('#e8b88a', '#b03a2a', '#8a3a5a', '#232630'), colorTag: '#ff2fb3' });
-}
-
-function buildCasa12() {
-  const m = room('casa12', 11, 9, 'CASA-12', [5, 7.3]);
-  suelo(m, 1, 1, 9, 7, 0);                        // madera
-  suelo(m, 1, 1, 4, 4, 9);                        // cocina baldosa
-  P(m, 'barra', 2, 1.5, true);
-  P(m, 'horno', 3.5, 1.5, true);
-  P(m, 'refri', 1.4, 2.5, true);
-  P(m, 'mesa', 7, 3, true, { w: 1.8, d: 0.9 });
-  P(m, 'silla', 6.3, 3.9, true); P(m, 'silla', 7.7, 3.9, true);
-  P(m, 'tv', 7.5, 0.9, false);
-  P(m, 'sofa', 7.5, 6.2, true);
-  P(m, 'planta', 1.5, 7.3, true);
-  P(m, 'cuadro', 4.5, 0.9, false);
-  salida(m, 4, 5, 8);
-  NPCa(m, { name: 'Otto', gx: 5.5, gy: 5.5, estatico: true, seed: 24, pal: PAL('#c98d5e', '#151824', '#2a9d8f', '#1e2130'), colorTag: '#2a9d8f' });
-}
-
 // ---------- construir todos ----------
 export function buildAllInteriors() {
   buildHQ(); buildHub(); buildNeural(); buildAnalysis(); buildMercado();
-  buildApto(); buildLogistica(); buildLabs(); buildSrv7(); buildCasa7(); buildCasa12();
+  buildApto(); buildLogistica(); buildLabs(); buildSrv7();
+  buildCasa7(); buildCasa12(); buildCasaGenerica('casa3', 'CASA-3', 'Sole', '#ff2fb3', 33);
+  buildCasaGenerica('casa9', 'CASA-9', 'Iker', '#7ae7ff', 34);
+  buildCafeteria(); buildGym(); buildClinica(); buildApto2();
 }
 
 // ============================================================
@@ -265,7 +497,7 @@ export function buildAllInteriors() {
 import { getCurrent } from './maps.js';
 
 const SUELOS = ['#8a6242', '#33619a', '#256048', '#262a3a', '#5a6478', '#151824', '#2a3050',
-  '#3a3f4c', '#123a44', '#cfc8b8', '#46505e', '#7a4a30', '#1a4a5a'];
+  '#3a3f4c', '#123a44', '#cfc8b8', '#46505e', '#7a4a30', '#1a4a5a', '#9fb3c8', '#232b40'];
 
 const P2 = (gx, gy) => ({ x: isoX(gx, gy), y: isoY(gx, gy) });
 
@@ -287,10 +519,14 @@ export function drawInteriorGround(t) {
       if (tt === 3) fill = (x + y) % 2 ? '#e8e8f0' : '#14161f';
       if (tt === 9 && h > 0.75) fill = '#bfb8a5';
       if (tt === 11 && h > 0.7) fill = '#8a5638';
+      if (tt === 13 && h > 0.7) fill = '#8ba3b8';
+      if (tt === 14) fill = (x + y) % 2 ? '#232b40' : '#20273a';
       ctx2.fillStyle = fill;
       dia(m, x, y); ctx2.fill();
       if (tt === 4 && h > 0.7) { ctx2.strokeStyle = 'rgba(255,255,255,0.06)'; ctx2.stroke(); }
       if (tt === 10 && (x % 2 === 0)) { ctx2.strokeStyle = 'rgba(0,0,0,0.18)'; ctx2.stroke(); }
+      if (tt === 13) { ctx2.strokeStyle = 'rgba(255,255,255,0.25)'; ctx2.stroke(); }
+      if (tt === 14 && h > 0.6) { ctx2.strokeStyle = 'rgba(255,210,63,0.10)'; ctx2.stroke(); }
       if (tt === 6) {
         ctx2.fillStyle = `rgba(0,240,255,${0.4 + 0.3 * Math.sin(t * 300 / 300)})`;
         ctx2.fill();
@@ -434,6 +670,13 @@ export function drawIProp(p, t) {
       isoBox(p.gx - 0.42, p.gy - 0.38, 0.5, 0.32, 12, { l: '#c8cdd8', r: '#e8e8f0', t: '#f4f6ff' });
       break;
     }
+    case 'camilla': {
+      isoBox(p.gx - 0.55, p.gy - 0.4, 1.1, 0.8, 9, { l: '#8a8f9f', r: '#aab0bf', t: '#e8f0ff' });
+      isoBox(p.gx - 0.4, p.gy - 0.3, 0.4, 0.3, 12, { l: '#c8cdd8', r: '#e8e8f0', t: '#f4f6ff' });
+      ctx2.strokeStyle = '#5a6070';
+      ctx2.beginPath(); ctx2.moveTo(x - 10, y - 2); ctx2.lineTo(x - 10, y + 2); ctx2.moveTo(x + 10, y - 2); ctx2.lineTo(x + 10, y + 2); ctx2.stroke();
+      break;
+    }
     case 'mesanight':
       isoBox(p.gx - 0.18, p.gy - 0.18, 0.36, 0.36, 12, { l: '#3a2a18', r: '#4a3320', t: '#5c4128' });
       ctx2.fillStyle = '#ffd97a'; ctx2.fillRect(x - 1, y - 16, 2, 2);
@@ -467,6 +710,21 @@ export function drawIProp(p, t) {
         ctx2.fillStyle = cols[(i + (p.gy * 2 | 0) + 2) % 5];
         ctx2.fillRect(x - 4 + i * 3, y - 12, 2, 6);
       }
+      break;
+    }
+    case 'vitrina': {
+      isoBox(p.gx - 0.35, p.gy - 0.25, 0.7, 0.5, 18, { l: '#1a2036', r: '#232a46', t: 'rgba(160,220,255,0.5)' });
+      ctx2.strokeStyle = 'rgba(200,240,255,0.6)';
+      ctx2.beginPath(); ctx2.moveTo(x - 8, y - 4); ctx2.lineTo(x - 8, y - 16); ctx2.lineTo(x + 6, y - 22); ctx2.stroke();
+      ctx2.fillStyle = '#ffd97a'; ctx2.fillRect(x - 4, y - 14, 3, 3);
+      ctx2.fillStyle = '#ff9a3d'; ctx2.fillRect(x + 1, y - 12, 3, 3);
+      break;
+    }
+    case 'maquina': {
+      isoBox(p.gx - 0.22, p.gy - 0.2, 0.44, 0.4, 20, { l: '#2c2013', r: '#3a2a18', t: '#c0392b' });
+      ctx2.fillStyle = `rgba(255,${140 + 60 * Math.sin(t * 4)},60,0.9)`;
+      ctx2.fillRect(x - 2, y - 14, 4, 2);
+      ctx2.fillStyle = '#e8e8f0'; ctx2.fillRect(x + 3, y - 8, 3, 3);
       break;
     }
     case 'caja':
@@ -511,6 +769,76 @@ export function drawIProp(p, t) {
       isoBox(p.gx - 0.22, p.gy - 0.22, 0.44, 0.44, 14, { l: '#2c2c34', r: '#3a3a44', t: '#4a4a55' });
       ctx2.fillStyle = `rgba(255,${120 + 60 * Math.sin(t * 6)},40,0.9)`;
       ctx2.fillRect(x - 3, y - 8, 6, 3);
+      break;
+    }
+    case 'fregadero': {
+      isoBox(p.gx - 0.3, p.gy - 0.24, 0.6, 0.48, 11, { l: '#3a4150', r: '#4a5262', t: '#5a6478' });
+      ctx2.fillStyle = '#7ac7ff';
+      ctx2.beginPath(); ctx2.ellipse(x, y - 12, 5, 2.4, 0, 0, 7); ctx2.fill();
+      ctx2.strokeStyle = '#c8cdd8';
+      ctx2.beginPath(); ctx2.moveTo(x, y - 14); ctx2.lineTo(x, y - 18); ctx2.lineTo(x + 3, y - 17); ctx2.stroke();
+      break;
+    }
+    case 'inodoro': {
+      isoBox(p.gx - 0.2, p.gy - 0.3, 0.4, 0.22, 16, { l: '#9aa3b0', r: '#c0c8d4', t: '#e8f0ff' });
+      ctx2.fillStyle = '#f4f8ff';
+      ctx2.beginPath(); ctx2.ellipse(x, y - 3, 5.5, 3.4, 0, 0, 7); ctx2.fill();
+      ctx2.strokeStyle = '#9aa3b0'; ctx2.stroke();
+      break;
+    }
+    case 'lavabo': {
+      isoBox(p.gx - 0.18, p.gy - 0.16, 0.36, 0.32, 10, { l: '#9aa3b0', r: '#c0c8d4', t: '#e8f0ff' });
+      ctx2.fillStyle = '#7ac7ff';
+      ctx2.beginPath(); ctx2.ellipse(x, y - 11, 4, 2, 0, 0, 7); ctx2.fill();
+      ctx2.strokeStyle = '#c8cdd8';
+      ctx2.beginPath(); ctx2.moveTo(x, y - 13); ctx2.lineTo(x, y - 17); ctx2.lineTo(x + 2, y - 16); ctx2.stroke();
+      break;
+    }
+    case 'ducha': {
+      ctx2.fillStyle = 'rgba(160,200,230,0.35)';
+      const n1 = P2(p.gx - 0.45, p.gy - 0.45), e1 = P2(p.gx + 0.45, p.gy - 0.45),
+        s1 = P2(p.gx + 0.45, p.gy + 0.45), w1 = P2(p.gx - 0.45, p.gy + 0.45);
+      ctx2.beginPath(); ctx2.moveTo(n1.x, n1.y); ctx2.lineTo(e1.x, e1.y); ctx2.lineTo(s1.x, s1.y); ctx2.lineTo(w1.x, w1.y); ctx2.closePath(); ctx2.fill();
+      ctx2.strokeStyle = '#c0c8d4'; ctx2.lineWidth = 2;
+      ctx2.beginPath(); ctx2.moveTo(x, y - 2); ctx2.lineTo(x, y - 26); ctx2.lineTo(x - 8, y - 26); ctx2.stroke();
+      ctx2.lineWidth = 1;
+      ctx2.fillStyle = '#8a9bb0'; ctx2.fillRect(x - 11, y - 28, 6, 2);
+      for (let i = 0; i < 5; i++) {
+        const dy = (t * 26 + i * 5) % 18;
+        ctx2.fillStyle = `rgba(122,199,255,${0.75 - dy * 0.03})`;
+        ctx2.fillRect(x - 9 + (i % 3) * 3, y - 25 + dy, 1.5, 3);
+      }
+      break;
+    }
+    case 'espejo': {
+      ctx2.fillStyle = '#5a6478'; ctx2.fillRect(x - 9, y - 40, 18, 14);
+      ctx2.fillStyle = '#9fd8e8'; ctx2.fillRect(x - 7.5, y - 38.5, 15, 11);
+      ctx2.strokeStyle = 'rgba(255,255,255,0.75)';
+      ctx2.beginPath(); ctx2.moveTo(x - 5, y - 29); ctx2.lineTo(x + 1, y - 37); ctx2.stroke();
+      break;
+    }
+    case 'caminadora': {
+      isoBox(p.gx - 0.3, p.gy - 0.5, 0.6, 1.0, 4, { l: '#1a1d30', r: '#23273c', t: '#2c3050' });
+      for (let i = 0; i < 4; i++) {
+        const ph2 = ((t * 2 + i / 4) % 1);
+        ctx2.fillStyle = `rgba(255,210,63,${0.5 - ph2 * 0.4})`;
+        ctx2.fillRect(x - 4, y - 8 + ph2 * 10, 8, 1.5);
+      }
+      isoBox(p.gx - 0.3, p.gy - 0.65, 0.6, 0.16, 18, { l: '#10131f', r: '#10131f', t: '#39466e' });
+      ctx2.fillStyle = '#39ff88'; ctx2.fillRect(x - 4, y - 24, 8, 2);
+      break;
+    }
+    case 'pesa': {
+      ctx2.fillStyle = '#2c3050';
+      ctx2.fillRect(x - 6, y - 5, 12, 2);
+      ctx2.fillRect(x - 8, y - 8, 3, 7); ctx2.fillRect(x + 5, y - 8, 3, 7);
+      ctx2.fillStyle = '#39ff88'; ctx2.fillRect(x - 8, y - 8, 3, 2); ctx2.fillRect(x + 5, y - 8, 3, 2);
+      break;
+    }
+    case 'cruz': {
+      ctx2.fillStyle = '#e8f0ff'; ctx2.fillRect(x - 9, y - 42, 18, 16);
+      ctx2.fillStyle = '#e63946';
+      ctx2.fillRect(x - 2.5, y - 39, 5, 10); ctx2.fillRect(x - 6, y - 36.5, 12, 5);
       break;
     }
     case 'mesa_lab':

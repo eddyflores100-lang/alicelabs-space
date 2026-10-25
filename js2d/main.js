@@ -4,7 +4,7 @@
 // sale por el tapete de salida. Como en un juego completo.
 // ============================================================
 import { G, ctx, cam, VW, VH, gridToWorld, toScreen, keys, consume, clamp, lerp, dist2, fadeTo, addCoins, saveState, audioInit, sfx, onCoinsChange } from './engine.js';
-import { buildCity, spots, buildings, props, crosswalks, distritos, tile as cityTileArr, puertas } from './city.js';
+import { buildCity, spots, buildings, props, crosswalks, distritos, tile as cityTileArr, puertas, MAPC, MAPR } from './city.js';
 import { drawGround, drawBuilding, drawProp, drawLights, drawCarBody } from './draw.js';
 import { player, updatePlayer, npcs, spawnNPCs, drawAgent, drawSeated, setCarBlock } from './agents.js';
 import { cars, spawnCars, updateCars, drawCars, carBlock, setPedList } from './cars.js';
@@ -29,8 +29,10 @@ if (!localStorage.getItem('alice_v5_hola')) {
 }
 
 // hooks globales para ui.js (minimapa)
-window.__aliceTileAt = (x, y) => G.modo === 'city' ? (crosswalks.has(y * 24 + x) ? 4 : cityTileArr[y * 24 + x]) : 1;
+window.__aliceTileAt = (x, y) => G.modo === 'city' ? (crosswalks.has(y * MAPC + x) ? 4 : cityTileArr[y * MAPC + x]) : 1;
 window.__aliceCars = cars;
+window.__alicePuertas = puertas;
+window.__aliceSpots = spots;
 // handle de depuración / integración
 window.__alice = {
   G, player, npcs, cars, MAPS,
@@ -55,7 +57,7 @@ document.getElementById('btn-entrar').addEventListener('click', () => {
   startBots();
   sfx.tarea();
   pushLog('Operador conectado a la red de agentes', 'verde');
-  chatPush('Ada', 'Bienvenido a ALICE CITY v6. La ciudad tiene 11 edificios con interior: entra por sus puertas.', '#ffd23f');
+  chatPush('Ada', 'Bienvenido a ALICE CITY v7. Metrópoli 40×40 con 17 interiores: cafetería, gym, clínica y casas con baño. ¡Vida de agentes!', '#ffd23f');
   setTimeout(() => toast(window.__esTouch ? 'Joystick para moverte · E para entrar' : 'Usa WASD · E entrar/hablar · M mapa'), 800);
 });
 
@@ -196,6 +198,39 @@ function interactuar() {
       it.done = true;
       break;
     }
+    // ---- vida diaria v7 ----
+    case 'ducha':
+      fadeTo(() => {
+        G.energia = Math.min(100, G.energia + 18);
+        saveState(); updateHUD();
+        toast('Ducha caliente: +18 energía');
+        pushLog('Te duchaste · +18 energía', 'verde');
+      });
+      break;
+    case 'cocina':
+      G.energia = Math.min(100, G.energia + 10);
+      saveState(); updateHUD(); sfx.moneda();
+      toast('Cocinaste: +10 energía');
+      break;
+    case 'cafetera':
+      G.energia = Math.min(100, G.energia + 12);
+      saveState(); updateHUD(); sfx.moneda();
+      toast('Café de Tara: +12 energía');
+      break;
+    case 'gym':
+      G.energia = Math.max(0, G.energia - 6);
+      saveState(); updateHUD();
+      toast('Entrenaste fuerte: −6 energía · +salud');
+      pushLog('Sesión de gym completada', 'amar');
+      break;
+    case 'camilla':
+      fadeTo(() => {
+        G.energia = 100;
+        saveState(); updateHUD();
+        toast('Dra. Luna: estás perfecto · energía 100/100');
+        pushLog('Revisión médica · energía al 100', 'verde');
+      });
+      break;
   }
 }
 
@@ -223,8 +258,18 @@ const DIALOGOS = {
   'Prof. Quark': ['NEON-9: nuestro compuesto más brillante.', 'La ciencia aquí se paga en ALC. Literal.'],
   Nix: ['Mis matraces burbujean felices.', 'Cuidado con el verde: tiñe la piel. Broma… casi.'],
   Teco: ['SRV-7 al 100%. Ese servidor es mi bebé.', 'Los LEDs verdes = dormir tranquilo.'],
-  'Doña Lu': ['¡Vecino! ¿Ya decoraste tu apto? Se ve vacío.', 'La clave del sofá: frente al televisor, siempre.'],
-  Otto: ['Horneo cada mañana a las 7. Sin fallar.', 'Los vecinos de ALICE CITY son buena gente.']
+  'Doña Lu': ['¡Vecino! El barrio quedó de lujo: baño propio y todo.', 'La clave del sofá: frente al televisor, siempre.'],
+  Otto: ['Horneo cada mañana a las 7. Sin fallar.', 'Los vecinos de ALICE CITY son buena gente.'],
+  Tara: ['¡Pase! El café de la casa paga la máquina sola.', 'Nave viene cada mañana antes de su turno en el Hub.'],
+  Nave: ['Con este café arranco el turno de datos.', 'La vitrina de Tara… mira las facturas de Neón.'],
+  Rocco: ['¡Vamos! Una vuelta más y la energía se renueva.', 'El gym es gratis para agentes de la red.'],
+  'Agente Fit': ['Cinco kilómetros antes del desayuno. Siempre.', 'Rocco no acepta excusas.'],
+  'Dra. Luna': ['Revisiones al día: cero agentes baja de 90 de energía.', 'Si te sientes mal, la camilla es gratis.'],
+  'Nurse Pip': ['Turno de vacunación a las 4. No llegues tarde.', 'La clínica nunca duerme, como el Hub.'],
+  Vek: ['Trabajo desde casa: el Hub me manda tickets aquí.', 'Mi gato Bit audita mis commits. MIAU incluido.'],
+  Sole: ['CASA-3 es pequeña pero con baño propio, jeje.', 'Lo mejor del cinturón norte: silencio total.'],
+  Iker: ['Vivo en el cinturón este. El commute vale la pena.', 'Cuando hay neón, hay vida.'],
+  Bit: ['MIAU-0002 · sys.audit(OK)', 'Traducción: Vek trabaja demasiado. Dale cariño.']
 };
 function hablarCon(n) {
   n.talk = DIALOGOS[n.name] ? DIALOGOS[n.name][Math.floor(Math.random() * (DIALOGOS[n.name].length))] : 'Red estable, operador.';
@@ -546,6 +591,19 @@ requestAnimationFrame(loop);
 // parámetros de depuración: ?tp=gx,gy & ?auto=1 & ?q=PID & ?map=apto
 try {
   const qs = new URLSearchParams(location.search);
+  // restaurar última posición del jugador (vida diaria: vuelves a donde estabas)
+  if (!qs.get('tp') && !qs.get('map')) {
+    const pos = JSON.parse(localStorage.getItem('alice_v7_pos') || 'null');
+    if (pos) {
+      if (pos.map && MAPS[pos.map]) {
+        const mm = setCurrent(pos.map);
+        G.modo = 'interior'; G.mapId = pos.map;
+        player.gx = mm.spawn[0]; player.gy = mm.spawn[1];
+      } else if (typeof pos.gx === 'number') {
+        player.gx = pos.gx; player.gy = pos.gy;
+      }
+    }
+  }
   if (qs.get('tp')) {
     const p = qs.get('tp').split(',').map(Number);
     player.gx = p[0]; player.gy = p[1];
@@ -560,5 +618,14 @@ try {
     if (qs.get('q')) setTimeout(() => aceptarQuest(qs.get('q')), 1200);
   }
 } catch (e) { }
+
+// guardar posición al salir (throttle 2s)
+let posT = 0;
+setInterval(() => {
+  if (!G.iniciado) return;
+  posT++;
+  if (posT % 4 !== 0) return;
+  try { localStorage.setItem('alice_v7_pos', JSON.stringify({ map: G.modo === 'city' ? null : G.mapId, gx: player.gx, gy: player.gy })); } catch (e) { }
+}, 500);
 
 addEventListener('beforeunload', saveState);

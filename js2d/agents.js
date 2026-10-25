@@ -189,7 +189,7 @@ export class NPC {
 
 // ---------- JUGADOR ----------
 export const player = {
-  gx: 8.5, gy: 6.5, speed: 2.3, phase: 0, state: 'idle', dir: 0,
+  gx: 9.5, gy: 12.6, speed: 2.7, phase: 0, state: 'idle', dir: 0,
   name: 'TÚ-OPERADOR', colorTag: '#00f0ff', seed: 1, talk: null, talkT: 0,
   pal: { skin: '#e8b88a', hair: '#101322', jacket: '#00b4d8', pants: '#1a1d30' },
   extras: {}, trail: []
@@ -236,8 +236,8 @@ export function updatePlayer(dt) {
   } else player.state = 'idle';
   // límites según mapa activo
   if (G.modo === 'city') {
-    player.gx = clamp(player.gx, 0.4, 23.6);
-    player.gy = clamp(player.gy, 0.4, 23.6);
+    player.gx = clamp(player.gx, 0.4, 39.6);
+    player.gy = clamp(player.gy, 0.4, 39.6);
   } else {
     const m = getCurrent();
     if (m) {
@@ -254,7 +254,7 @@ export function updatePlayer(dt) {
   player.trail = player.trail.filter(tr => tr.a > 0);
 }
 
-// población de la ciudad
+// población de la ciudad (26 agentes en la metrópoli)
 export const npcs = [];
 export function spawnNPCs() {
   const palettes = [
@@ -269,14 +269,18 @@ export function spawnNPCs() {
     { name: 'Agent_773', pi: 0 }, { name: 'Beta-3', pi: 1 }, { name: 'Omega-5', pi: 2 },
     { name: 'Lorena', pi: 3 }, { name: 'AgentA', pi: 4 }, { name: 'Diego', pi: 5 },
     { name: 'Agent_045', pi: 2 }, { name: 'Clarita', pi: 0 }, { name: 'Agent_312', pi: 3 },
-    { name: 'Nova', pi: 1, estatico: true, spot: 'doorHub', questId: 'P2', colorTag: '#7ae7ff' },
-    { name: 'Bella', pi: 4, estatico: true, spot: 'q1a', questId: 'P3', colorTag: '#ff2fb3' },
-    { name: 'Rex', pi: 5, estatico: true, spot: 'doorMercado', questId: 'P4', colorTag: '#ffb347' },
-    { name: 'Kilo-9', pi: 1 }, { name: 'Zeta-1', pi: 3 }, { name: 'Agent_777', pi: 2 }, { name: 'Mora', pi: 0 }
+    { name: 'Kilo-9', pi: 5 }, { name: 'Zeta-1', pi: 2 }, { name: 'Agent_777', pi: 4 },
+    { name: 'Mora', pi: 1 }, { name: 'Pixel', pi: 0 }, { name: 'Turbo', pi: 3 },
+    { name: 'Lupa', pi: 6 }, { name: 'Rayo', pi: 7 }, { name: 'Centa', pi: 8 },
+    { name: 'Neo_9', pi: 9 }, { name: 'Vega_2', pi: 10 }, { name: 'Luz_7', pi: 11 },
+    { name: 'Bruma', pi: 12 }, { name: 'Cisco', pi: 13 }, { name: 'Tinta', pi: 14 },
+    { name: 'Nova', pi: 0, estatico: true, spot: 'doorHub', questId: 'P2', colorTag: '#7ae7ff' },
+    { name: 'Bella', pi: 0, estatico: true, spot: 'q1a', questId: 'P3', colorTag: '#ff2fb3' },
+    { name: 'Rex', pi: 0, estatico: true, spot: 'doorMercado', questId: 'P4', colorTag: '#ffb347' }
   ];
   let k = 0;
   for (const d of defs) {
-    const o = { ...d, seed: k * 1.7 + 0.3, pal: palettes[k % palettes.length], speed: 0.9 + hash2(k, 7) * 0.5 };
+    const o = { ...d, seed: k * 1.7 + 0.3, pal: palettes[k % palettes.length], speed: 0.95 + hash2(k, 7) * 0.55 };
     if (d.estatico && d.spot && spots[d.spot]) {
       o.gx = spots[d.spot].gx; o.gy = spots[d.spot].gy + 0.35;
     } else {

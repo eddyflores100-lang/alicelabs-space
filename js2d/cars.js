@@ -8,18 +8,22 @@ import { isCross, onRoad, lightPhase } from './city.js';
 import { drawCarBody } from './draw.js';
 import { isoX, isoY } from './engine.js';
 
-// rutas cerradas sobre los carriles (centros de carril)
+// rutas cerradas sobre los carriles (centros de carril, grid 40×40)
 export const ROUTES = [
-  { pts: [[3.5, 3.5], [3.5, 12.5], [12.5, 12.5], [12.5, 3.5]], cols: ['#e63946', '#00b4d8'] },
-  { pts: [[11.5, 3.5], [11.5, 12.5], [20.5, 12.5], [20.5, 3.5]], cols: ['#ffd23f', '#6a3a8a'] },
-  { pts: [[3.5, 11.5], [3.5, 20.5], [12.5, 20.5], [12.5, 11.5]], cols: ['#2a9d8f', '#e76f51'] },
-  { pts: [[11.5, 11.5], [11.5, 20.5], [20.5, 20.5], [20.5, 11.5]], cols: ['#8a9bff', '#ff2fb3'] },
-  { pts: [[3.5, 3.5], [3.5, 20.5], [20.5, 20.5], [20.5, 3.5]], cols: ['#c0c8d8', '#39ff88', '#ff9a3d'] }
+  { pts: [[5.5, 5.5], [5.5, 15.5], [15.5, 15.5], [15.5, 5.5]], cols: ['#e63946', '#00b4d8'] },
+  { pts: [[14.5, 5.5], [14.5, 15.5], [24.5, 15.5], [24.5, 5.5]], cols: ['#ffd23f', '#6a3a8a'] },
+  { pts: [[5.5, 14.5], [5.5, 24.5], [15.5, 24.5], [15.5, 14.5]], cols: ['#2a9d8f', '#e76f51'] },
+  { pts: [[14.5, 14.5], [14.5, 24.5], [24.5, 24.5], [24.5, 14.5]], cols: ['#8a9bff', '#ff2fb3'] },
+  { pts: [[5.5, 5.5], [5.5, 33.5], [33.5, 33.5], [33.5, 5.5]], cols: ['#c0c8d8', '#39ff88', '#ff9a3d'] },
+  { pts: [[5.5, 23.5], [5.5, 33.5], [15.5, 33.5], [15.5, 23.5]], cols: ['#ff9a3d', '#7ae7ff'] },
+  { pts: [[23.5, 14.5], [23.5, 33.5], [33.5, 33.5], [33.5, 14.5]], cols: ['#c17aff', '#39ff88'] },
+  { pts: [[33.5, 5.5], [33.5, 33.5], [5.5, 33.5], [5.5, 5.5]], cols: ['#e8e8f0', '#ffb347', '#2a9d8f'] }
 ];
 
 export const cars = [];
 export function spawnCars() {
-  const plan = [[0, 0.0], [0, 0.5], [1, 0.2], [2, 0.0], [3, 0.4], [4, 0.1], [4, 0.6]];
+  const plan = [[0, 0.0], [0, 0.5], [1, 0.2], [2, 0.0], [3, 0.4], [4, 0.1], [4, 0.45],
+                [5, 0.15], [6, 0.3], [6, 0.7], [7, 0.25], [7, 0.6], [1, 0.75], [2, 0.6]];
   plan.forEach((p, i) => {
     cars.push({
       route: p[0], seg: 0, t: p[1],
@@ -84,8 +88,8 @@ export function updateCars(dt) {
       if (along > -0.1 && along < 0.55 && perp < 0.4) { target = 0; c.honkT = 0.6; }
     }
 
-    // 2) semáforo rojo en cruce central por delante
-    const inters = [[4, 4], [12, 4], [4, 12], [12, 12]];
+    // 2) semáforo rojo en cruce semaforizado por delante (grid 40×40)
+    const inters = [[6, 6], [15, 6], [24, 6], [6, 15], [15, 15], [24, 15], [6, 24], [15, 24], [24, 24]];
     for (const it of inters) {
       const rx = it[0] - c.gx, ry = it[1] - c.gy;
       const along = rx * ux + ry * uy;
