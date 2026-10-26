@@ -172,8 +172,12 @@ export function buildCity() {
   // 5. MOBILIARIO URBANO (holgado: nunca sobre rutas de acera)
   // ============================================================
   // --- PLAZA CENTRAL: fuente + bancos + árboles ---
-  for (let y = 10; y <= 11; y++) for (let x = 10; x <= 11; x++) setSolid(x, y);
-  prop('fuente', 11, 11, false);
+  // v9.1 fix Task 267: la fuente 2×2 en (10..11,10..11) sellaba el carril x=11
+  // (único acceso a la puerta de la ALICE TOWER en (11.35,9.5)) → el jugador
+  // llegaba a la plaza y la puerta quedaba tras un muro invisible. Ahora es
+  // compacta (±0.5) en (10,11) con sólido acorde; el carril x=11 queda libre.
+  setSolid(10, 11); setSolid(9, 11);
+  prop('fuente', 10, 11, false);
   prop('banco', 8.6, 11.5, true, { dir: 0 });
   prop('banco', 12.4, 11.5, true, { dir: 0 });
   prop('arbol', 8.4, 12.5, true, { big: true });

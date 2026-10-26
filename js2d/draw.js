@@ -474,15 +474,17 @@ export function drawProp(p, t) {
       break;
     }
     case 'fuente': {
+      // v9.1 fix Task 267: fuente COMPACTA (±0.5) — la 2×2 sellaba el acceso
+      // a la puerta de la ALICE TOWER; el sólido ahora es 1 tile (city.js).
       // pileta con gradiente de piedra
-      const c = P(p.gx - 1, p.gy - 1), e2 = P(p.gx + 1, p.gy - 1), s2 = P(p.gx + 1, p.gy + 1), w2 = P(p.gx - 1, p.gy + 1);
+      const c = P(p.gx - 0.5, p.gy - 0.5), e2 = P(p.gx + 0.5, p.gy - 0.5), s2 = P(p.gx + 0.5, p.gy + 0.5), w2 = P(p.gx - 0.5, p.gy + 0.5);
       const fg = ctx.createLinearGradient(0, c.y, 0, s2.y);
       fg.addColorStop(0, '#c8ccd8'); fg.addColorStop(1, '#9aa0b4');
       ctx.fillStyle = fg;
       ctx.beginPath(); ctx.moveTo(c.x, c.y); ctx.lineTo(e2.x, e2.y); ctx.lineTo(s2.x, s2.y); ctx.lineTo(w2.x, w2.y); ctx.closePath(); ctx.fill();
       ctx.strokeStyle = '#7a8094'; ctx.stroke();
       // agua con gradiente azul
-      const w1 = P(p.gx - 0.55, p.gy - 0.55), e1 = P(p.gx + 0.55, p.gy - 0.55), s1 = P(p.gx + 0.55, p.gy + 0.55), ww = P(p.gx - 0.55, p.gy + 0.55);
+      const w1 = P(p.gx - 0.3, p.gy - 0.3), e1 = P(p.gx + 0.3, p.gy - 0.3), s1 = P(p.gx + 0.3, p.gy + 0.3), ww = P(p.gx - 0.3, p.gy + 0.3);
       const ag = ctx.createLinearGradient(0, w1.y, 0, s1.y);
       ag.addColorStop(0, 'rgba(120,220,255,0.85)'); ag.addColorStop(1, 'rgba(0,150,220,0.8)');
       ctx.fillStyle = ag;
@@ -490,19 +492,19 @@ export function drawProp(p, t) {
       // ondas
       const ph = (t * 1.4) % 1;
       ctx.strokeStyle = `rgba(220,248,255,${0.6 - ph * 0.5})`;
-      const r0 = 0.2 + ph * 0.5;
+      const r0 = 0.08 + ph * 0.22;
       const a1 = P(p.gx - r0, p.gy - r0), b1 = P(p.gx + r0, p.gy - r0), c1 = P(p.gx + r0, p.gy + r0), d1 = P(p.gx - r0, p.gy + r0);
       ctx.beginPath(); ctx.moveTo(a1.x, a1.y); ctx.lineTo(b1.x, b1.y); ctx.lineTo(c1.x, c1.y); ctx.lineTo(d1.x, d1.y); ctx.closePath(); ctx.stroke();
       // chorro central con brillo
       const ctr = P(p.gx, p.gy);
-      const jg = ctx.createLinearGradient(0, ctr.y - 12, 0, ctr.y);
+      const jg = ctx.createLinearGradient(0, ctr.y - 8, 0, ctr.y);
       jg.addColorStop(0, 'rgba(255,255,255,0.95)'); jg.addColorStop(1, 'rgba(160,230,255,0.8)');
       ctx.fillStyle = jg;
-      ctx.fillRect(ctr.x - 1, ctr.y - 10, 2, 10);
+      ctx.fillRect(ctr.x - 1, ctr.y - 7, 2, 7);
       for (let i = 0; i < 5; i++) {
-        const dy = ((t * 30 + i * 7) % 12);
-        ctx.fillStyle = `rgba(200,245,255,${0.9 - dy * 0.06})`;
-        ctx.fillRect(ctr.x - 3 + (i % 2) * 5, ctr.y - 12 + dy, 1.4, 1.4);
+        const dy = ((t * 30 + i * 7) % 8);
+        ctx.fillStyle = `rgba(200,245,255,${0.9 - dy * 0.09})`;
+        ctx.fillRect(ctr.x - 3 + (i % 2) * 5, ctr.y - 8 + dy, 1.4, 1.4);
       }
       break;
     }
