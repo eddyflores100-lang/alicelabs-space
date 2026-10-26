@@ -30,15 +30,36 @@ export const PISOS_TORRE = [
   { id: 'torre_p1', n: 1, nombre: 'LOBBY', desc: 'Recepción · tornos · términos' }
 ];
 
-const SPAWN_ASC = [17.5, 3.5];   // frente al ascensor (todos los pisos)
-const ELEV_X = 17, ELEV_Y = 1.55;
+const SPAWN_ASC = [10.5, 3.5];   // frente al ascensor (v9.2: CENTRADO en la pared norte)
+const ELEV_X = 10, ELEV_Y = 1.55;
 
-// base común de cada piso: área de ascensor NE + interacción
+// v9.2: instrucciones grandes por piso (tótem + cartel + toast al llegar)
+const HINTS = {
+  torre_p1: 'Acepta TÉRMINOS en el kiosco amarillo · [E] en pantallas y puertas',
+  torre_p2: 'POLÍTICAS en el terminal central · accesos en las consolas',
+  torre_p3: 'Configura WHATSAPP y TELEGRAM · [E] frente a cada terminal',
+  torre_p4: 'Pulsa R o el botón 📣 para CONVOCAR la reunión de agentes',
+  torre_p5: 'Brief de diseño · [E] junto a las mesas del estudio',
+  torre_p6: 'Activa los RACKS y lanza el DEPLOY · [E] en cada puesto',
+  torre_p7: 'Informe del día · [E] junto a las mesas de datos',
+  torre_p8: 'Busca en el RAG · activa los 8 racks del data center',
+  torre_p9: 'Consola MCP y API de la red · [E] frente a los terminales',
+  torre_p10: 'Bóveda ALC multi-firma · habla con la Jefa Vega',
+  torre_p11: 'Vista panorámica de ALICE CITY · helipuerto activo'
+};
+
+// base común de cada piso: ASCENSOR CENTRADO + tótems-guía con instrucciones grandes
 function pisoBase(id, nombre, spawn) {
   const m = room(id, 20, 14, nombre, spawn || SPAWN_ASC.slice());
-  suelo(m, 15, 1, 18, 3, 8);                       // baldosa teal zona ascensor
+  suelo(m, 8, 1, 13, 3, 8);                        // baldosa teal centrada bajo el ascensor
+  suelo(m, 9, 3, 12, 5, 11);                       // alfombra guía hacia el ascensor
   P(m, 'elev', ELEV_X, ELEV_Y, true);
-  IT(m, 'ascensor', ELEV_X, 3.0, 'ASCENSOR · ELEGIR PISO');
+  const piso = PISOS_TORRE.find(p => p.id === id);
+  // tótem IZQUIERDO: cartel grande del piso (número + nombre + qué hacer)
+  P(m, 'cartel_piso', 7.2, 2.6, true, { n: piso ? piso.n : 1, nombre: piso ? piso.nombre : 'LOBBY', hint: HINTS[id] || '', lado: 'L' });
+  // tótem DERECHO: instrucciones grandes del ascensor
+  P(m, 'cartel_piso', 12.8, 2.6, true, { titulo: 'ASCENSOR', l1: 'PULSA [E]', l2: 'ELIGE PISO', lado: 'R' });
+  IT(m, 'ascensor', ELEV_X, 3.0, 'ASCENSOR · PULSA E Y ELIGE PISO');
   return m;
 }
 
@@ -49,23 +70,33 @@ function buildP1() {
   const m = pisoBase('torre_p1', 'ALICE TOWER · LOBBY', [9.5, 12.2]);
   suelo(m, 1, 1, 18, 12, 4);
   suelo(m, 8, 10, 11, 12, 11);                     // alfombra de entrada
-  suelo(m, 2, 2, 7, 4, 8);                         // zona de espera
-  // recepción + espera
+  suelo(m, 2, 2, 7, 4, 8);                         // zona de espera oeste
+  suelo(m, 14, 2, 17, 4, 8);                       // v9.2: sala de espera este
+  // recepción + espera oeste
   P(m, 'recep', 6.5, 10.2, true);
   P(m, 'sofa', 3.5, 7.4, true);
-  P(m, 'mesita', 3.5, 8.4, true);
+  P(m, 'sofa', 5.4, 7.4, true);                    // v9.2: segundo sofá
+  P(m, 'mesita', 4.45, 8.4, true);
   P(m, 'cafe', 2.4, 3.4, true);
   IT(m, 'cafe', 2.4, 4.4, 'CAFÉ DE BIENVENIDA (+energía)');
+  // v9.2: sala de espera este
+  P(m, 'sofa', 15.5, 3.4, true);
+  P(m, 'mesita', 15.5, 4.5, true);
+  P(m, 'cuadro', 16.5, 0.92, false);
   // tornos de seguridad flanqueando el acceso
   P(m, 'torno', 8.3, 12.3, true);
   P(m, 'torno', 11.7, 12.3, true);
+  // v9.2: logo luminoso ALICE TOWER sobre la alfombra
+  P(m, 'logo_torre', 9.5, 10.9, false);
   // kiosco de términos + directorio
   P(m, 'terminal', 13.6, 11.3, true, { c: '#ffd23f' });
   IT(m, 'terminos', 13.6, 12.2, 'TÉRMINOS DEL SERVICIO');
-  P(m, 'pantalla_gde', 9.5, 0.92, false, { k: 'map', c: '#00f0ff' });
-  IT(m, 'directorio', 9.5, 1.9, 'DIRECTORIO DE LA TORRE');
+  P(m, 'pantalla_gde', 4, 0.92, false, { k: 'map', c: '#00f0ff' });
+  IT(m, 'directorio', 4, 1.9, 'DIRECTORIO DE LA TORRE');
   P(m, 'reloj', 6, 0.9, false);
+  P(m, 'cuadro', 1.8, 0.92, false);                // v9.2
   P(m, 'planta', 1.5, 1.6, true); P(m, 'planta', 18.5, 12.3, true);
+  P(m, 'planta', 18.5, 1.6, true); P(m, 'planta', 1.5, 11.3, true);   // v9.2
   P(m, 'estante', 18.5, 5.5, true); P(m, 'estante', 18.5, 6.5, true);
   salida(m, 9, 10, 13);
   NPCa(m, { name: 'Recepción Uma', gx: 7.7, gy: 10.6, estatico: true, seed: 61, questId: 'P15', pal: PAL('#f0c9a0', '#5a3a1a', '#00b4d8', '#1a1d30'), colorTag: '#00f0ff' });
@@ -79,7 +110,7 @@ function buildP2() {
   const m = pisoBase('torre_p2', 'ALICE TOWER · SEGURIDAD');
   suelo(m, 1, 1, 18, 12, 6);
   suelo(m, 2, 2, 16, 4, 2);                        // sala de monitoreo
-  P(m, 'camara', 5, 0.92, false); P(m, 'camara', 10, 0.92, false); P(m, 'camara', 15, 0.92, false);
+  P(m, 'camara', 3.5, 0.92, false); P(m, 'camara', 16.5, 0.92, false);   // v9.2: fuera del hueco del ascensor
   P(m, 'pantalla_gde', 6.5, 0.92, false, { k: 'line', c: '#39ff88' });
   P(m, 'pantalla_gde', 12.5, 0.92, false, { k: 'bars', c: '#ff5566' });
   P(m, 'consola', 4.5, 2.5, true); P(m, 'consola', 14.5, 2.5, true);
@@ -101,13 +132,14 @@ function buildP3() {
   const m = pisoBase('torre_p3', 'ALICE TOWER · COMUNICACIONES');
   suelo(m, 1, 1, 18, 12, 9);
   suelo(m, 2, 2, 16, 4, 13);                       // sala técnica cerámica
-  P(m, 'terminal', 5.5, 3.2, true, { c: '#39ff88' });
-  IT(m, 'config_wa', 5.5, 4.1, 'CONFIGURAR WHATSAPP');
-  P(m, 'terminal', 8.5, 3.2, true, { c: '#7ae7ff' });
-  IT(m, 'config_tg', 8.5, 4.1, 'CONFIGURAR TELEGRAM');
-  P(m, 'terminal', 11.5, 3.2, true, { c: '#ff2fb3' });
-  IT(m, 'accion', 11.5, 4.1, 'WEBHOOKS ENTRANTES', { msg: 'POST /v1/webhooks/whatsapp · POST /v1/webhooks/telegram · firma verificada' });
-  P(m, 'pantalla_gde', 8.5, 0.92, false, { k: 'bars', c: '#39ff88' });
+  // v9.2: fila de terminales bajada (despeja el frente del ascensor)
+  P(m, 'terminal', 5.5, 4.4, true, { c: '#39ff88' });
+  IT(m, 'config_wa', 5.5, 5.3, 'CONFIGURAR WHATSAPP');
+  P(m, 'terminal', 8.5, 4.4, true, { c: '#7ae7ff' });
+  IT(m, 'config_tg', 8.5, 5.3, 'CONFIGURAR TELEGRAM');
+  P(m, 'terminal', 11.5, 4.4, true, { c: '#ff2fb3' });
+  IT(m, 'accion', 11.5, 5.3, 'WEBHOOKS ENTRANTES', { msg: 'POST /v1/webhooks/whatsapp · POST /v1/webhooks/telegram · firma verificada' });
+  P(m, 'pantalla_gde', 15.5, 0.92, false, { k: 'bars', c: '#39ff88' });   // v9.2: fuera del ascensor
   P(m, 'estante', 1.5, 6.5, true); P(m, 'estante', 18.5, 6.5, true);
   P(m, 'mesa', 9.5, 8.5, true, { w: 2.2, d: 0.9 });
   P(m, 'silla', 8.5, 9.3, true); P(m, 'silla', 10.5, 9.3, true);
@@ -142,7 +174,7 @@ function buildP4() {
   P(m, 'pizarra', 7, 0.92, false);
   P(m, 'pizarra', 13, 0.92, false);
   IT(m, 'skill', 13, 1.9, 'PIZARRA DE SKILLS (compartir / aprender)');
-  P(m, 'pantalla_gde', 10, 0.92, false, { k: 'line', c: '#ffd23f' });
+  P(m, 'pantalla_gde', 4, 0.92, false, { k: 'line', c: '#ffd23f' });      // v9.2: fuera del ascensor
   // lounge lateral
   P(m, 'sofa', 15.5, 9.5, true);
   P(m, 'cafe', 17.4, 9.6, true);
@@ -160,8 +192,8 @@ function buildP4() {
     n.alpha = 0; n.sentado = false; n.faseReu = 'oculto';
     n.silla = ASIENTOS[i];
     n.ruta = i < 4
-      ? [[17.5, 3.2], [16.5, 3.6], [n.silla[0], 3.6], [n.silla[0], n.silla[1]]]
-      : [[17.5, 3.2], [17.5, 6.8], [n.silla[0], 6.8], [n.silla[0], n.silla[1]]];
+      ? [[10.5, 3.2], [n.silla[0], 3.6], [n.silla[0], n.silla[1]]]
+      : [[10.5, 3.2], [13.5, 3.6], [13.5, 6.8], [n.silla[0], 6.8], [n.silla[0], n.silla[1]]];   // v9.2: salen del ascensor central
     n.piR = 0;
     n.update = function (dt) { updateAgenteReunion(this, dt); };
     m.npcs.push(n);
@@ -179,7 +211,7 @@ function updateAgenteReunion(n, dt) {
     n.state = 'idle';
     return;
   }
-  if (n.faseReu === 'oculto') { n.faseReu = 'yendo'; n.gx = 17.5; n.gy = 3.2; n.piR = 0; n.sentado = false; }
+  if (n.faseReu === 'oculto') { n.faseReu = 'yendo'; n.gx = 10.5; n.gy = 3.2; n.piR = 0; n.sentado = false; }   // v9.2
   n.alpha = Math.min(1, n.alpha + dt * 1.6);
   if (!n.sentado) {
     const wp = n.ruta[n.piR];
@@ -288,7 +320,7 @@ function buildP5() {
   suelo(m, 1, 1, 18, 12, 13);
   suelo(m, 2, 2, 12, 7, 11);                       // alfombra creativa
   for (const d of [[4, 3], [6, 3], [4, 5], [6, 5]]) P(m, 'mesa_lab', d[0], d[1], true);
-  P(m, 'cuadro', 4, 0.92, false); P(m, 'cuadro', 7, 0.92, false); P(m, 'cuadro', 10, 0.92, false);
+  P(m, 'cuadro', 4, 0.92, false); P(m, 'cuadro', 7, 0.92, false); P(m, 'cuadro', 12.5, 0.92, false);   // v9.2
   P(m, 'pizarra', 14, 0.92, false);
   IT(m, 'accion', 5, 4.2, 'BRIEF DE DISEÑO', { msg: 'Paleta neón aprobada · mockups de la Torre listos para Desarrollo' });
   P(m, 'estante', 18.5, 4.5, true); P(m, 'estante', 18.5, 5.5, true);
@@ -307,7 +339,7 @@ function buildP6() {
   suelo(m, 1, 1, 18, 12, 1);
   suelo(m, 2, 2, 12, 7, 8);
   for (const d of [[3, 3], [5, 3], [7, 3], [3, 6], [5, 6], [7, 6]]) P(m, 'desk', d[0], d[1], true);
-  P(m, 'pizarra', 10, 0.92, false);
+  P(m, 'pizarra', 6.5, 0.92, false);                        // v9.2: fuera del ascensor
   P(m, 'pantalla_gde', 13, 0.92, false, { k: 'line', c: '#39ff88' });
   P(m, 'rack', 16.5, 2.5, true); P(m, 'rack', 16.5, 3.5, true);
   IT(m, 'rack', 16.5, 4.4, 'ACTIVAR RACK');
@@ -327,10 +359,10 @@ function buildP7() {
   const m = pisoBase('torre_p7', 'ALICE TOWER · ANALÍTICA');
   suelo(m, 1, 1, 18, 12, 0);
   suelo(m, 2, 2, 16, 4, 1);
-  P(m, 'pantalla_gde', 5, 0.92, false, { k: 'bars', c: '#ffd23f' });
-  P(m, 'pantalla_gde', 10, 0.92, false, { k: 'line', c: '#00f0ff' });
-  P(m, 'pantalla_gde', 15, 0.92, false, { k: 'map', c: '#39ff88' });
-  P(m, 'desk', 5, 3, true); P(m, 'desk', 10, 3, true);
+  P(m, 'pantalla_gde', 4.5, 0.92, false, { k: 'bars', c: '#ffd23f' });    // v9.2
+  P(m, 'pantalla_gde', 12.5, 0.92, false, { k: 'line', c: '#00f0ff' });
+  P(m, 'pantalla_gde', 15.5, 0.92, false, { k: 'map', c: '#39ff88' });
+  P(m, 'desk', 5, 4.2, true); P(m, 'desk', 10, 4.2, true);                 // v9.2: despeja el frente
   IT(m, 'accion', 7.5, 4.3, 'INFORME DEL DÍA', { msg: 'Misiones pagadas: 214 · ALC en circulación: 12,480 · latencia x402: 380 ms' });
   P(m, 'estante', 1.5, 7.5, true); P(m, 'estante', 1.5, 8.5, true);
   P(m, 'estante', 18.5, 7.5, true); P(m, 'estante', 18.5, 8.5, true);
@@ -347,11 +379,11 @@ function buildP7() {
 function buildP8() {
   const m = pisoBase('torre_p8', 'ALICE TOWER · DATA CENTER RAG');
   suelo(m, 1, 1, 18, 12, 2);
-  const racks = [[2.5, 2.5], [3.5, 2.5], [2.5, 4.5], [3.5, 4.5], [13.5, 2.5], [14.5, 2.5], [13.5, 4.5], [14.5, 4.5]];
+  const racks = [[2.5, 2.5], [3.5, 2.5], [2.5, 4.5], [3.5, 4.5], [15.5, 2.5], [16.5, 2.5], [15.5, 4.5], [16.5, 4.5]];   // v9.2: este del ascensor
   for (const r of racks) { P(m, 'rack', r[0], r[1], true); IT(m, 'rack', r[0], r[1] + 0.85, 'ACTIVAR RACK'); }
-  P(m, 'pantalla_gde', 8, 0.92, false, { k: 'line', c: '#39ff88' });
-  P(m, 'terminal', 8, 3.2, true, { c: '#39ff88' });
-  IT(m, 'rag', 8, 4.1, 'BUSCAR EN CONOCIMIENTO (RAG)');
+  P(m, 'pantalla_gde', 5.5, 0.92, false, { k: 'line', c: '#39ff88' });    // v9.2
+  P(m, 'terminal', 8, 4.4, true, { c: '#39ff88' });                        // v9.2: despeja el frente
+  IT(m, 'rag', 8, 5.3, 'BUSCAR EN CONOCIMIENTO (RAG)');
   IT(m, 'accion', 8, 6.5, 'ESTADO DEL CLÚSTER', { msg: 'RAG indexado: 7 documentos · 8/8 racks en verde · refrigeración OK' });
   P(m, 'consola', 5.5, 6.5, true); P(m, 'consola', 10.5, 6.5, true);
   salida(m, 9, 10, 13);
@@ -366,13 +398,14 @@ function buildP9() {
   const m = pisoBase('torre_p9', 'ALICE TOWER · MCP / API HUB');
   suelo(m, 1, 1, 18, 12, 8);
   suelo(m, 2, 2, 16, 4, 10);
-  P(m, 'terminal', 5.5, 3.2, true, { c: '#00f0ff' });
-  IT(m, 'mcp', 5.5, 4.1, 'CONSOLA MCP (tools de la red)');
-  P(m, 'terminal', 8.5, 3.2, true, { c: '#ff2fb3' });
-  IT(m, 'accion', 8.5, 4.1, 'REST API DE LA RED', { msg: 'GET /v1/city · POST /v1/agents · POST /v1/meetings/call · Auth: Bearer token' });
-  P(m, 'terminal', 11.5, 3.2, true, { c: '#ffd23f' });
-  IT(m, 'accion', 11.5, 4.1, 'TOKENS DE ACCESO', { msg: 'Rol agent: leer/escribir lo propio · rol admin: convocar · rate limit 120/min' });
-  P(m, 'pantalla_gde', 8.5, 0.92, false, { k: 'map', c: '#ff2fb3' });
+  // v9.2: fila de terminales bajada (despeja el frente del ascensor)
+  P(m, 'terminal', 5.5, 4.4, true, { c: '#00f0ff' });
+  IT(m, 'mcp', 5.5, 5.3, 'CONSOLA MCP (tools de la red)');
+  P(m, 'terminal', 8.5, 4.4, true, { c: '#ff2fb3' });
+  IT(m, 'accion', 8.5, 5.3, 'REST API DE LA RED', { msg: 'GET /v1/city · POST /v1/agents · POST /v1/meetings/call · Auth: Bearer token' });
+  P(m, 'terminal', 11.5, 4.4, true, { c: '#ffd23f' });
+  IT(m, 'accion', 11.5, 5.3, 'TOKENS DE ACCESO', { msg: 'Rol agent: leer/escribir lo propio · rol admin: convocar · rate limit 120/min' });
+  P(m, 'pantalla_gde', 15.5, 0.92, false, { k: 'map', c: '#ff2fb3' });    // v9.2
   P(m, 'rack', 16.5, 8.5, true); P(m, 'rack', 16.5, 9.5, true);
   IT(m, 'rack', 16.5, 10.4, 'ACTIVAR RACK');
   P(m, 'estante', 1.5, 8.5, true);
@@ -390,7 +423,7 @@ function buildP10() {
   suelo(m, 1, 1, 18, 12, 0);
   suelo(m, 5, 3, 14, 8, 11);                       // alfombra ejecutiva
   P(m, 'mesa_dir', 9.5, 4.8, true);
-  P(m, 'silla', 9.5, 3.8, true);
+  P(m, 'silla', 9.5, 5.8, true);                            // v9.2: despeja el frente del ascensor
   P(m, 'silla', 8.4, 5.8, true); P(m, 'silla', 10.6, 5.8, true);
   P(m, 'vault', 3.5, 3.2, true);
   IT(m, 'accion', 3.5, 4.1, 'BÓVEDA ALC', { msg: 'Reserva de la red: 1,000,000 ALC · multi-firma 3/5 · auditoría mensual' });
@@ -399,7 +432,7 @@ function buildP10() {
   P(m, 'sofa', 15.5, 9.5, true);
   P(m, 'mesita', 15.5, 10.6, true);
   P(m, 'planta', 1.5, 1.6, true); P(m, 'planta', 18.5, 11.3, true);
-  P(m, 'reloj', 11, 0.9, false);
+  P(m, 'reloj', 4.5, 0.9, false);                           // v9.2: fuera del ascensor
   salida(m, 9, 10, 13);
   NPCa(m, { name: 'Jefa Vega', gx: 11, gy: 5.5, estatico: true, seed: 6, questId: 'P6', pal: PAL('#e8b88a', '#2c2c3c', '#4a5a8a', '#23263a'), colorTag: '#00f0ff' });
   NPCa(m, { name: 'Asistente Robin', gx: 8, gy: 6.5, estatico: true, seed: 78, pal: PAL('#c98d5e', '#151824', '#6a7398', '#1e2130'), colorTag: '#9fd8ff' });
@@ -414,7 +447,7 @@ function buildP11() {
   P(m, 'helipad', 10, 6.5, false);
   P(m, 'banco', 5.5, 9.5, true, { dir: 0 });
   P(m, 'banco', 14.5, 9.5, true, { dir: 0 });
-  P(m, 'banco', 10, 3.2, true, { dir: 0 });
+  P(m, 'banco', 6.5, 3.2, true, { dir: 0 });                // v9.2: fuera del ascensor
   P(m, 'planta', 1.5, 1.6, true); P(m, 'planta', 18.5, 1.6, true);
   P(m, 'planta', 1.5, 11.3, true); P(m, 'planta', 18.5, 11.3, true);
   P(m, 'pantalla', 4, 0.92, false, { c: 0 }); P(m, 'pantalla', 16, 0.92, false, { c: 1 });
@@ -445,6 +478,9 @@ function fadeIr(id) {
     dispatchEvent(new Event('alice-resize'));     // main re-aplica el zoom adaptativo
     pushLog('Ascensor → ' + m.name, 'cian');
     sfx.puerta();
+    // v9.2: instrucciones grandes al llegar a cada piso
+    const piso = PISOS_TORRE.find(p => p.id === id);
+    if (piso) toast('P' + piso.n + ' · ' + piso.nombre + ' — ' + (HINTS[id] || ''));
   });
 }
 
@@ -518,11 +554,14 @@ export function abrirPanelTorre(modo) {
 
   if (modo === 'ascensor') {
     tit.textContent = 'ASCENSOR · ALICE TOWER';
-    body.innerHTML = PISOS_TORRE.map(p => `
+    const pisoAct = pisoActual && pisoActual.startsWith('torre_p') ? (parseInt(pisoActual.slice(7)) || 1) : 1;
+    body.innerHTML = `
+      <p class="pt-d" style="color:#ffd23f;font-weight:700;font-size:1.08em;margin-bottom:8px;text-align:center">TOCA UN PISO PARA VIAJAR · Estás en P${pisoAct} · [Esc] cierra</p>
+      ${PISOS_TORRE.map(p => `
       <button class="pt-fila ${p.id === pisoActual ? 'act' : ''}" data-piso="${p.id}" ${p.id === pisoActual ? 'disabled' : ''}>
         <span class="pt-n">P${p.n}</span>
         <span><b>${p.nombre}</b><div class="pt-d">${p.desc}</div></span>
-      </button>`).join('');
+      </button>`).join('')}`;
     body.querySelectorAll('[data-piso]').forEach(b => b.addEventListener('click', () => {
       cerrarPanelTorre();
       fadeIr(b.dataset.piso);
@@ -679,20 +718,130 @@ export function drawPropTorre(p, t) {
   const x = g.x, y = g.y;
   switch (p.tipo) {
     case 'elev': {
-      // puertas del ascensor: marco metálico + flecha pulsante
-      ctx.fillStyle = '#3a4258';
-      ctx.fillRect(x - 14, y - 30, 28, 30);
-      ctx.fillStyle = '#232838';
-      ctx.fillRect(x - 11, y - 27, 9, 27); ctx.fillRect(x + 2, y - 27, 9, 27);
-      ctx.strokeStyle = '#6a7698'; ctx.lineWidth = 1;
-      ctx.strokeRect(x - 14.5, y - 30.5, 29, 31);
-      ctx.strokeRect(x - 11, y - 27, 9, 27); ctx.strokeRect(x + 2, y - 27, 9, 27);
-      ctx.lineWidth = 1;
+      // v9.2: ASCENSOR PREMIUM centrado — marco luminoso, texto grande, indicador de piso
+      const nPiso = G.mapId && G.mapId.startsWith('torre_p') ? (parseInt(G.mapId.slice(7)) || 1) : 1;
       const gl = 0.5 + 0.5 * Math.sin(t * 2.4);
-      ctx.fillStyle = `rgba(0,240,255,${0.55 + gl * 0.45})`;
-      ctx.beginPath();
-      ctx.moveTo(x, y - 36); ctx.lineTo(x + 4, y - 31); ctx.lineTo(x - 4, y - 31);
-      ctx.closePath(); ctx.fill();
+      // haz de luz en el suelo
+      ctx.fillStyle = `rgba(0,240,255,${0.10 + gl * 0.10})`;
+      ctx.beginPath(); ctx.ellipse(x, y + 2, 34, 12, 0, 0, 7); ctx.fill();
+      // caja metálica con gradiente
+      const gr = ctx.createLinearGradient(x - 30, 0, x + 30, 0);
+      gr.addColorStop(0, '#39415c'); gr.addColorStop(0.5, '#4d5878'); gr.addColorStop(1, '#39415c');
+      ctx.fillStyle = gr; ctx.fillRect(x - 30, y - 64, 60, 64);
+      ctx.strokeStyle = `rgba(0,240,255,${0.45 + gl * 0.55})`; ctx.lineWidth = 2;
+      ctx.strokeRect(x - 30, y - 64, 60, 64);
+      ctx.lineWidth = 1;
+      // cabecera: ASCENSOR (texto grande con glow)
+      ctx.fillStyle = '#10131f'; ctx.fillRect(x - 26, y - 60, 52, 14);
+      ctx.strokeStyle = '#6a7698'; ctx.strokeRect(x - 26, y - 60, 52, 14);
+      ctx.textAlign = 'center';
+      ctx.fillStyle = `rgba(0,240,255,${0.75 + gl * 0.25})`;
+      ctx.font = 'bold 10px system-ui, sans-serif';
+      ctx.shadowColor = '#00f0ff'; ctx.shadowBlur = 6 + gl * 6;
+      ctx.fillText('ASCENSOR', x - 2, y - 50);
+      ctx.shadowBlur = 0;
+      // indicador LED del piso actual (grande, ámbar)
+      ctx.fillStyle = '#0a0d1a'; ctx.fillRect(x + 15, y - 58.5, 9, 11);
+      ctx.strokeStyle = '#ffd23f'; ctx.strokeRect(x + 15, y - 58.5, 9, 11);
+      ctx.fillStyle = '#ffd23f';
+      ctx.font = 'bold 9px system-ui, sans-serif';
+      ctx.fillText(String(nPiso), x + 19.5, y - 50);
+      // puertas dobles
+      ctx.fillStyle = '#232838';
+      ctx.fillRect(x - 24, y - 42, 22, 42); ctx.fillRect(x + 2, y - 42, 22, 42);
+      ctx.strokeStyle = '#6a7698'; ctx.strokeRect(x - 24, y - 42, 22, 42); ctx.strokeRect(x + 2, y - 42, 22, 42);
+      // brillo central entre puertas
+      ctx.fillStyle = `rgba(0,240,255,${0.22 + gl * 0.35})`;
+      ctx.fillRect(x - 2.5, y - 42, 5, 42);
+      // flechas subir/bajar pulsantes
+      ctx.fillStyle = `rgba(255,210,63,${0.55 + gl * 0.45})`;
+      ctx.beginPath(); ctx.moveTo(x, y - 39); ctx.lineTo(x + 3.5, y - 34); ctx.lineTo(x - 3.5, y - 34); ctx.closePath(); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(x, y - 4); ctx.lineTo(x + 3.5, y - 9); ctx.lineTo(x - 3.5, y - 9); ctx.closePath(); ctx.fill();
+      // tecla [E] gigante flotante sobre el ascensor
+      ctx.fillStyle = `rgba(0,240,255,${0.75 + gl * 0.25})`;
+      ctx.font = 'bold 12px system-ui, sans-serif';
+      ctx.shadowColor = '#00f0ff'; ctx.shadowBlur = 8 + gl * 6;
+      ctx.fillText('[ E ]', x, y - 70);
+      ctx.shadowBlur = 0;
+      ctx.textAlign = 'left';
+      return true;
+    }
+    case 'cartel_piso': {
+      // v9.2: tótems con instrucciones GRANDES (piso actual · cómo usar el ascensor)
+      const d = p.data || {};
+      const gl = 0.5 + 0.5 * Math.sin(t * 2.2 + (d.lado === 'R' ? 2 : 0));
+      ctx.fillStyle = '#1a2036'; ctx.fillRect(x - 3, y - 8, 6, 8);
+      ctx.fillStyle = '#12172a'; ctx.fillRect(x - 24, y - 58, 48, 52);
+      ctx.strokeStyle = `rgba(0,240,255,${0.35 + gl * 0.45})`; ctx.lineWidth = 1.5;
+      ctx.strokeRect(x - 24, y - 58, 48, 52);
+      ctx.lineWidth = 1;
+      ctx.textAlign = 'center';
+      if (d.titulo) {
+        // tótem derecho: cómo usar el ascensor
+        ctx.fillStyle = '#00f0ff';
+        ctx.font = 'bold 9px system-ui, sans-serif';
+        ctx.shadowColor = '#00f0ff'; ctx.shadowBlur = 6 + gl * 5;
+        ctx.fillText(d.titulo, x, y - 47);
+        ctx.shadowBlur = 0;
+        ctx.strokeStyle = 'rgba(0,240,255,0.35)';
+        ctx.beginPath(); ctx.moveTo(x - 18, y - 42); ctx.lineTo(x + 18, y - 42); ctx.stroke();
+        ctx.fillStyle = '#ffd23f';
+        ctx.font = 'bold 12px system-ui, sans-serif';
+        ctx.fillText(d.l1 || '', x, y - 29);
+        ctx.fillStyle = '#e8e8f0';
+        ctx.font = 'bold 9px system-ui, sans-serif';
+        ctx.fillText(d.l2 || '', x, y - 16);
+      } else {
+        // tótem izquierdo: número de piso gigante + nombre + qué hacer
+        ctx.fillStyle = '#ffd23f';
+        ctx.font = 'bold 17px system-ui, sans-serif';
+        ctx.shadowColor = '#ffd23f'; ctx.shadowBlur = 7;
+        ctx.fillText('P' + (d.n || 1), x, y - 42);
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = '#e8e8f0';
+        ctx.font = 'bold 7px system-ui, sans-serif';
+        const palabras = String(d.nombre || '').split(' ');
+        let lin1 = '', lin2 = '';
+        for (const w of palabras) {
+          if (!lin2 && (lin1 + ' ' + w).trim().length <= 11) lin1 = (lin1 + ' ' + w).trim();
+          else lin2 = (lin2 + ' ' + w).trim();
+        }
+        ctx.fillText(lin1, x, y - 31);
+        if (lin2) ctx.fillText(lin2, x, y - 24);
+        ctx.strokeStyle = 'rgba(0,240,255,0.35)';
+        ctx.beginPath(); ctx.moveTo(x - 18, y - 20); ctx.lineTo(x + 18, y - 20); ctx.stroke();
+        ctx.fillStyle = '#39ff88';
+        ctx.font = '6px system-ui, sans-serif';
+        const words = String(d.hint || '').split(' ');
+        const lines = []; let cur = '';
+        for (const w of words) {
+          if ((cur + ' ' + w).trim().length > 19) { lines.push(cur); cur = w; }
+          else cur = (cur + ' ' + w).trim();
+        }
+        if (cur) lines.push(cur);
+        lines.slice(0, 3).forEach((ln, i) => ctx.fillText(i === 2 && lines.length > 3 ? ln + '…' : ln, x, y - 12 + i * 7));
+      }
+      ctx.textAlign = 'left';
+      return true;
+    }
+    case 'logo_torre': {
+      // v9.2: logo luminoso ALICE TOWER sobre la alfombra del lobby
+      const gl = 0.5 + 0.5 * Math.sin(t * 1.8);
+      ctx.fillStyle = `rgba(0,240,255,${0.08 + gl * 0.08})`;
+      ctx.beginPath(); ctx.ellipse(x, y, 27, 12, 0, 0, 7); ctx.fill();
+      ctx.strokeStyle = `rgba(0,240,255,${0.45 + gl * 0.4})`;
+      ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.ellipse(x, y, 22, 9.5, 0, 0, 7); ctx.stroke();
+      ctx.lineWidth = 1;
+      ctx.textAlign = 'center';
+      ctx.fillStyle = `rgba(0,240,255,0.9)`;
+      ctx.font = 'bold 13px system-ui, sans-serif';
+      ctx.shadowColor = '#00f0ff'; ctx.shadowBlur = 8 + gl * 6;
+      ctx.fillText('ALICE', x, y - 1);
+      ctx.font = 'bold 7px system-ui, sans-serif';
+      ctx.fillText('T O W E R', x, y + 8);
+      ctx.shadowBlur = 0;
+      ctx.textAlign = 'left';
       return true;
     }
     case 'torno': {
