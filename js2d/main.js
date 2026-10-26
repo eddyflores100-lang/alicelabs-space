@@ -72,7 +72,7 @@ document.getElementById('btn-entrar').addEventListener('click', () => {
   sfx.tarea();
   pushLog('Operador conectado a la red de agentes', 'verde');
   chatPush('Ada', '¡ALICE TOWER ABIERTA! 11 pisos con ascensor: reuniones con botón de convocatoria (tecla R), WhatsApp/Telegram, RAG, MCP y API. Queda en la Plaza Central.', '#00f0ff');
-  setTimeout(() => toast(window.__esTouch ? 'Joystick para moverte · E para entrar' : 'Usa WASD · E entrar/hablar · M mapa'), 800);
+  setTimeout(() => toast(window.__esTouch ? 'Joystick para moverte · E para entrar · MAPA te guía' : 'Usa WASD · E entrar/hablar · M minimapa con tu ubicación'), 800);
 });
 
 // ---------- cámara ----------
@@ -82,10 +82,13 @@ cam.y = gridToWorld(player.gx, player.gy).y;
 // v8.1 ZOOM ADAPTATIVO: base según modo × factor de pantalla × multiplicador del
 // usuario. factorVisual() ya incluye el boost móvil → en un teléfono en HORIZONTAL
 // los objetos se ven tan grandes como en un monitor (fin del «se ven muy pequeños»).
+// v9.3 ZOOM PLUS: base subida en ciudad e interiores (petición del founder: «más zoom»).
 let zoomMult = 1;          // zoom manual (+/− / rueda) sobre la base adaptativa
 let zoomObjetivo = 1.6;
+let miniPersist = false;   // v9.3: minimapa flotante fijado con M
+let miniAuto = 0;          // v9.3: temporizador de auto-aparición cerca de puertas/ascensor
 function zoomBase() {
-  const base = G.overview ? 0.88 : (G.modo === 'city' ? 1.6 : 1.9);
+  const base = G.overview ? 0.95 : (G.modo === 'city' ? 2.0 : 2.4);
   return base * factorVisual();
 }
 function aplicarZoom() { zoomObjetivo = clamp(zoomBase() * zoomMult, 0.35, 5.5); }
@@ -665,12 +668,16 @@ function loop(now) {
   buscarInteraccion();
   updateHUD();
 
-  // zoom suave + overview
-  if (consume('m')) {
-    G.overview = !G.overview;
-    aplicarZoom();
-    sfx.ui();
-  }
+  // v9.3: el minimapa aparece SOLO cuando vas a ir a algún lado
+  // (puerta de la ciudad, ascensor de la torre o salida) y se va al alejarte
+  if (cerca && (cerca.tipo === 'puerta' || cerca.tipo === 'ascensor' || cerca.tipo === 'salida' || cerca.tipo === 'directorio')) miniAuto = 2.8;
+  else if (miniAuto > 0) miniAuto -= dt;
+
+  // zoom suave + controles de vista
+  // v9.3: M = MINIMAPA FLOTANTE con tu ubicación · V = vista aérea estratégica
+  if (consume('m')) { miniPersist = !miniPersist; sfx.ui(); }
+  if (consume('escape')) miniPersist = false;
+  if (consume('v')) { G.overview = !G.overview; aplicarZoom(); sfx.ui(); }
   if (consume('+') || consume('=')) { zoomMult = clamp(zoomMult * 1.2, 0.35, 2.6); aplicarZoom(); }
   if (consume('-')) { zoomMult = clamp(zoomMult / 1.2, 0.35, 2.6); aplicarZoom(); }
   if (consume('e')) interactuar();
@@ -730,6 +737,9 @@ function loop(now) {
     }
   }
 
+  // v9.3: MINIMAPA FLOTANTE con tu ubicación (auto cerca de puertas/ascensor o con M)
+  if (miniPersist || miniAuto > 0) drawMiniFlotante();
+
   // fundido
   if (G.fade > 0) {
     ctx.fillStyle = `rgba(3,4,10,${G.fade})`;
@@ -759,6 +769,136 @@ function drawOffscreenArrow() {
     ctx.beginPath(); ctx.moveTo(8, 0); ctx.lineTo(-5, -5); ctx.lineTo(-5, 5); ctx.closePath(); ctx.fill();
     ctx.restore();
   }
+}
+
+// ---------- v9.3 MINIMAPA FLOTANTE CON TU UBICACIÓN ----------
+// Aparece cuando el jugador va a ir a algún lado (puerta/ascensor/salida cerca)
+// o lo fija con M. Muestra: dónde estás (punto pulsante + «ESTÁS AQUÍ»),
+// la torre, las puertas y —si vas a una puerta— la línea punteada a tu destino.
+function rrect(c, x0, y0, w, h, r) {
+  c.beginPath();
+  c.moveTo(x0 + r, y0);
+  c.arcTo(x0 + w, y0, x0 + w, y0 + h, r);
+  c.arcTo(x0 + w, y0 + h, x0, y0 + h, r);
+  c.arcTo(x0, y0 + h, x0, y0, r);
+  c.arcTo(x0, y0, x0 + w, y0, r);
+  c.closePath();
+}
+function drawMiniFlotante() {
+  const k = Math.max(1, VW / (window.innerWidth || VW));   // escala dpr → tamaño visual constante
+  const m = G.modo === 'interior' ? getCurrent() : null;
+  const S = Math.round(180 * k);            // lado del área de mapa
+  const pad = 10 * k, headH = 20 * k, footH = 14 * k;
+  const W = S + pad * 2;
+  const H = headH + S + footH + Math.round(pad * 1.6);
+  // en escritorio el panel del chat (224 px) vive en el borde derecho → el
+  // minimapa se dibuja a su izquierda; en móvil (paneles colapsados) al borde.
+  const chatPx = document.body && document.body.classList.contains('movil') ? 0 : 236;
+  const px = VW - W - 12 * k - chatPx * k, py = 46 * k;  // bajo la barra superior
+  const g = 0.6 + 0.4 * Math.sin(G.tiempo * 3);
+  // marco del panel
+  rrect(ctx, px, py, W, H, 10 * k);
+  ctx.fillStyle = 'rgba(5,8,18,0.88)'; ctx.fill();
+  ctx.strokeStyle = `rgba(0,240,255,${0.5 + g * 0.3})`; ctx.lineWidth = 1.5 * k; ctx.stroke();
+  // título
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#00f0ff';
+  ctx.font = `bold ${Math.round(9 * k)}px monospace`;
+  ctx.fillText(m ? m.name : 'MAPA · ALICE CITY', px + W / 2, py + 14 * k);
+  // área del mapa
+  const mx = px + pad, my = py + headH;
+  ctx.fillStyle = '#0a0d1a';
+  ctx.fillRect(mx, my, S, S);
+  if (m) {
+    // ---- interior: plano del mapa + ascensor + jugador ----
+    const s = Math.max(4, Math.min(13, Math.floor(S / Math.max(m.w, m.h))));
+    const ox = mx + (S - m.w * s) / 2, oy = my + (S - m.h * s) / 2;
+    ctx.fillStyle = '#1c2340';
+    ctx.fillRect(ox, oy, m.w * s, m.h * s);
+    for (let y = 0; y < m.h; y++) for (let x = 0; x < m.w; x++) {
+      const tt = m.tiles[y * m.w + x];
+      if (tt === 5) { ctx.fillStyle = '#3a4668'; ctx.fillRect(ox + x * s, oy + y * s, s - 1, s - 1); }
+      else if (tt === 6) { ctx.fillStyle = 'rgba(0,240,255,0.55)'; ctx.fillRect(ox + x * s, oy + y * s, s - 1, s - 1); }
+    }
+    const elev = m.props ? m.props.find(p => p.tipo === 'elev') : null;
+    if (elev) {
+      ctx.fillStyle = '#ffd23f';
+      ctx.fillRect(ox + elev.gx * s - 2.5 * k, oy + elev.gy * s - 2.5 * k, 5 * k, 5 * k);
+      ctx.fillStyle = '#ffd23f';
+      ctx.font = `bold ${Math.round(6 * k)}px monospace`;
+      ctx.fillText('ASCENSOR', ox + elev.gx * s, oy + elev.gy * s - 7 * k);
+    }
+    // jugador pulsante
+    const jx = ox + player.gx * s, jy = oy + player.gy * s;
+    ctx.strokeStyle = `rgba(0,240,255,${0.35 + g * 0.5})`;
+    ctx.lineWidth = 1.5 * k;
+    ctx.beginPath(); ctx.arc(jx, jy, (5 + g * 3) * k, 0, 7); ctx.stroke();
+    ctx.fillStyle = '#00f0ff';
+    ctx.beginPath(); ctx.arc(jx, jy, 3 * k, 0, 7); ctx.fill();
+    ctx.fillStyle = '#ffd23f';
+    ctx.font = `bold ${Math.round(6.5 * k)}px monospace`;
+    ctx.fillText('ESTÁS AQUÍ', Math.max(ox + 20 * k, Math.min(ox + m.w * s - 20 * k, jx)), jy - 7 * k);
+  } else {
+    // ---- ciudad 40×40: distritos + torre + puertas + jugador ----
+    const sc = S / 40;
+    for (let y = 0; y < 40; y++) for (let x = 0; x < 40; x++) {
+      const tt = window.__aliceTileAt ? window.__aliceTileAt(x, y) : 0;
+      ctx.fillStyle = tt === 1 || tt === 4 ? '#232838' : (tt === 2 || tt === 3 ? '#2e3a5c' : '#16301f');
+      ctx.fillRect(mx + x * sc, my + y * sc, sc + 0.5, sc + 0.5);
+    }
+    // manzana de la ALICE TOWER
+    ctx.fillStyle = 'rgba(255,210,63,0.85)';
+    ctx.fillRect(mx + 8 * sc, my + 8 * sc, 3 * sc, 3 * sc);
+    // npcs + coches
+    ctx.fillStyle = 'rgba(232,232,240,0.75)';
+    for (const n of npcs) ctx.fillRect(mx + n.gx * sc - 1, my + n.gy * sc - 1, 2, 2);
+    ctx.fillStyle = '#ff9a3d';
+    for (const c of cars) ctx.fillRect(mx + c.gx * sc - 1.5, my + c.gy * sc - 1.5, 3, 3);
+    // puertas (la más cercana, tu destino, resaltada en verde)
+    let puertaCerca = null;
+    for (const p of puertas) {
+      const s = spots[p.spot];
+      if (!s) continue;
+      const es = cerca && cerca.tipo === 'puerta' && cerca.ref === p;
+      if (es) puertaCerca = { s, p };
+      const r = es ? 3.5 * k : 2;
+      ctx.fillStyle = es ? '#39ff88' : 'rgba(0,240,255,0.9)';
+      ctx.fillRect(mx + s.gx * sc - r, my + s.gy * sc - r, r * 2, r * 2);
+    }
+    // jugador
+    const jx = mx + player.gx * sc, jy = my + player.gy * sc;
+    ctx.strokeStyle = `rgba(0,240,255,${0.35 + g * 0.5})`;
+    ctx.lineWidth = 1.5 * k;
+    ctx.beginPath(); ctx.arc(jx, jy, (5 + g * 3) * k, 0, 7); ctx.stroke();
+    ctx.fillStyle = '#00f0ff';
+    ctx.beginPath(); ctx.arc(jx, jy, 3 * k, 0, 7); ctx.fill();
+    ctx.fillStyle = '#ffd23f';
+    ctx.font = `bold ${Math.round(6.5 * k)}px monospace`;
+    ctx.fillText('ESTÁS AQUÍ', Math.max(mx + 22 * k, Math.min(mx + S - 22 * k, jx)), jy - 7 * k);
+    // destino: línea punteada + etiqueta de la puerta
+    if (puertaCerca) {
+      const dx2 = mx + puertaCerca.s.gx * sc, dy2 = my + puertaCerca.s.gy * sc;
+      ctx.strokeStyle = 'rgba(57,255,136,0.85)';
+      ctx.setLineDash([3 * k, 3 * k]);
+      ctx.beginPath(); ctx.moveTo(jx, jy); ctx.lineTo(dx2, dy2); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = '#39ff88';
+      ctx.font = `bold ${Math.round(6.5 * k)}px monospace`;
+      const lw = ctx.measureText(puertaCerca.p.label).width;
+      const lx = Math.max(mx + lw / 2 + 2, Math.min(mx + S - lw / 2 - 2, dx2));
+      ctx.fillText(puertaCerca.p.label, lx, Math.max(my + 8 * k, dy2 - 8 * k));
+    }
+    // rótulo de la torre
+    ctx.fillStyle = '#ffd23f';
+    ctx.font = `bold ${Math.round(6 * k)}px monospace`;
+    ctx.fillText('TORRE', mx + 9.5 * sc, my + 7.2 * sc);
+  }
+  // pie con la acción disponible
+  ctx.fillStyle = 'rgba(160,190,230,0.92)';
+  ctx.font = `${Math.round(7 * k)}px monospace`;
+  ctx.fillText(cerca && cerca.tipo === 'puerta' ? '[E] ENTRAR · M cierra el mapa' : 'M abre/cierra · punto cian: tú', px + W / 2, py + H - 7 * k);
+  ctx.textAlign = 'left';
+  ctx.lineWidth = 1;
 }
 
 requestAnimationFrame(loop);

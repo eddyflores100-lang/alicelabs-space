@@ -48,17 +48,13 @@ const HINTS = {
   torre_p11: 'Vista panorámica de ALICE CITY · helipuerto activo'
 };
 
-// base común de cada piso: ASCENSOR CENTRADO + tótems-guía con instrucciones grandes
+// base común de cada piso: ASCENSOR CENTRADO con directorio luminoso encima
+// (v9.3: SIN tótems laterales — toda la leyenda vive SOBRE el ascensor)
 function pisoBase(id, nombre, spawn) {
   const m = room(id, 20, 14, nombre, spawn || SPAWN_ASC.slice());
   suelo(m, 8, 1, 13, 3, 8);                        // baldosa teal centrada bajo el ascensor
   suelo(m, 9, 3, 12, 5, 11);                       // alfombra guía hacia el ascensor
   P(m, 'elev', ELEV_X, ELEV_Y, true);
-  const piso = PISOS_TORRE.find(p => p.id === id);
-  // tótem IZQUIERDO: cartel grande del piso (número + nombre + qué hacer)
-  P(m, 'cartel_piso', 7.2, 2.6, true, { n: piso ? piso.n : 1, nombre: piso ? piso.nombre : 'LOBBY', hint: HINTS[id] || '', lado: 'L' });
-  // tótem DERECHO: instrucciones grandes del ascensor
-  P(m, 'cartel_piso', 12.8, 2.6, true, { titulo: 'ASCENSOR', l1: 'PULSA [E]', l2: 'ELIGE PISO', lado: 'R' });
   IT(m, 'ascensor', ELEV_X, 3.0, 'ASCENSOR · PULSA E Y ELIGE PISO');
   return m;
 }
@@ -718,7 +714,8 @@ export function drawPropTorre(p, t) {
   const x = g.x, y = g.y;
   switch (p.tipo) {
     case 'elev': {
-      // v9.2: ASCENSOR PREMIUM centrado — marco luminoso, texto grande, indicador de piso
+      // v9.3: ASCENSOR PREMIUM + DIRECTORIO LUMINOSO SOBRE EL ASCENSOR
+      // (dónde estás + qué pisos hay) — única señal del piso, sin rótulos laterales
       const nPiso = G.mapId && G.mapId.startsWith('torre_p') ? (parseInt(G.mapId.slice(7)) || 1) : 1;
       const gl = 0.5 + 0.5 * Math.sin(t * 2.4);
       // haz de luz en el suelo
@@ -757,70 +754,42 @@ export function drawPropTorre(p, t) {
       ctx.fillStyle = `rgba(255,210,63,${0.55 + gl * 0.45})`;
       ctx.beginPath(); ctx.moveTo(x, y - 39); ctx.lineTo(x + 3.5, y - 34); ctx.lineTo(x - 3.5, y - 34); ctx.closePath(); ctx.fill();
       ctx.beginPath(); ctx.moveTo(x, y - 4); ctx.lineTo(x + 3.5, y - 9); ctx.lineTo(x - 3.5, y - 9); ctx.closePath(); ctx.fill();
-      // tecla [E] gigante flotante sobre el ascensor
-      ctx.fillStyle = `rgba(0,240,255,${0.75 + gl * 0.25})`;
-      ctx.font = 'bold 12px system-ui, sans-serif';
-      ctx.shadowColor = '#00f0ff'; ctx.shadowBlur = 8 + gl * 6;
-      ctx.fillText('[ E ]', x, y - 70);
-      ctx.shadowBlur = 0;
-      ctx.textAlign = 'left';
-      return true;
-    }
-    case 'cartel_piso': {
-      // v9.2: tótems con instrucciones GRANDES (piso actual · cómo usar el ascensor)
-      const d = p.data || {};
-      const gl = 0.5 + 0.5 * Math.sin(t * 2.2 + (d.lado === 'R' ? 2 : 0));
-      ctx.fillStyle = '#1a2036'; ctx.fillRect(x - 3, y - 8, 6, 8);
-      ctx.fillStyle = '#12172a'; ctx.fillRect(x - 24, y - 58, 48, 52);
-      ctx.strokeStyle = `rgba(0,240,255,${0.35 + gl * 0.45})`; ctx.lineWidth = 1.5;
-      ctx.strokeRect(x - 24, y - 58, 48, 52);
+      // ---- v9.3: DIRECTORIO LUMINOSO SOBRE EL ASCENSOR ----
+      // dónde estás (grande) + los 11 pisos en dos columnas + cómo usarlo
+      const CORTO = { 11: 'SKY DECK', 10: 'DIRECCIÓN', 9: 'MCP·API', 8: 'RAG', 7: 'ANALÍTICA', 6: 'DEVELOP', 5: 'DISEÑO', 4: 'REUNIONES', 3: 'COMUNIC', 2: 'SEGURIDAD', 1: 'LOBBY' };
+      const bw = 92, bh2 = 62, bx = x - bw / 2, by = y - 64 - bh2;
+      ctx.fillStyle = 'rgba(7,11,24,0.94)';
+      ctx.fillRect(bx, by, bw, bh2);
+      ctx.strokeStyle = `rgba(0,240,255,${0.45 + gl * 0.5})`;
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(bx, by, bw, bh2);
       ctx.lineWidth = 1;
       ctx.textAlign = 'center';
-      if (d.titulo) {
-        // tótem derecho: cómo usar el ascensor
-        ctx.fillStyle = '#00f0ff';
-        ctx.font = 'bold 9px system-ui, sans-serif';
-        ctx.shadowColor = '#00f0ff'; ctx.shadowBlur = 6 + gl * 5;
-        ctx.fillText(d.titulo, x, y - 47);
-        ctx.shadowBlur = 0;
-        ctx.strokeStyle = 'rgba(0,240,255,0.35)';
-        ctx.beginPath(); ctx.moveTo(x - 18, y - 42); ctx.lineTo(x + 18, y - 42); ctx.stroke();
-        ctx.fillStyle = '#ffd23f';
-        ctx.font = 'bold 12px system-ui, sans-serif';
-        ctx.fillText(d.l1 || '', x, y - 29);
-        ctx.fillStyle = '#e8e8f0';
-        ctx.font = 'bold 9px system-ui, sans-serif';
-        ctx.fillText(d.l2 || '', x, y - 16);
-      } else {
-        // tótem izquierdo: número de piso gigante + nombre + qué hacer
-        ctx.fillStyle = '#ffd23f';
-        ctx.font = 'bold 17px system-ui, sans-serif';
-        ctx.shadowColor = '#ffd23f'; ctx.shadowBlur = 7;
-        ctx.fillText('P' + (d.n || 1), x, y - 42);
-        ctx.shadowBlur = 0;
-        ctx.fillStyle = '#e8e8f0';
-        ctx.font = 'bold 7px system-ui, sans-serif';
-        const palabras = String(d.nombre || '').split(' ');
-        let lin1 = '', lin2 = '';
-        for (const w of palabras) {
-          if (!lin2 && (lin1 + ' ' + w).trim().length <= 11) lin1 = (lin1 + ' ' + w).trim();
-          else lin2 = (lin2 + ' ' + w).trim();
-        }
-        ctx.fillText(lin1, x, y - 31);
-        if (lin2) ctx.fillText(lin2, x, y - 24);
-        ctx.strokeStyle = 'rgba(0,240,255,0.35)';
-        ctx.beginPath(); ctx.moveTo(x - 18, y - 20); ctx.lineTo(x + 18, y - 20); ctx.stroke();
-        ctx.fillStyle = '#39ff88';
-        ctx.font = '6px system-ui, sans-serif';
-        const words = String(d.hint || '').split(' ');
-        const lines = []; let cur = '';
-        for (const w of words) {
-          if ((cur + ' ' + w).trim().length > 19) { lines.push(cur); cur = w; }
-          else cur = (cur + ' ' + w).trim();
-        }
-        if (cur) lines.push(cur);
-        lines.slice(0, 3).forEach((ln, i) => ctx.fillText(i === 2 && lines.length > 3 ? ln + '…' : ln, x, y - 12 + i * 7));
-      }
+      ctx.fillStyle = '#ffd23f';
+      ctx.font = 'bold 5.5px system-ui, sans-serif';
+      ctx.fillText('ESTÁS EN EL PISO', x, by + 8);
+      ctx.fillStyle = '#00f0ff';
+      ctx.font = 'bold 8.5px system-ui, sans-serif';
+      ctx.shadowColor = '#00f0ff'; ctx.shadowBlur = 7 + gl * 5;
+      ctx.fillText('P' + nPiso + ' · ' + (CORTO[nPiso] || 'LOBBY'), x, by + 18.5);
+      ctx.shadowBlur = 0;
+      ctx.strokeStyle = 'rgba(0,240,255,0.3)';
+      ctx.beginPath(); ctx.moveTo(bx + 5, by + 22.5); ctx.lineTo(bx + bw - 5, by + 22.5); ctx.stroke();
+      // listado de pisos en dos columnas · el actual resaltado en ámbar
+      ctx.font = '4.7px system-ui, sans-serif';
+      ctx.textAlign = 'left';
+      const filaPiso = (p, cx0, cy0) => {
+        const act = p.n === nPiso;
+        if (act) { ctx.fillStyle = 'rgba(255,210,63,0.16)'; ctx.fillRect(cx0 - 2, cy0 - 4.2, 40, 5.2); }
+        ctx.fillStyle = act ? '#ffd23f' : 'rgba(185,215,255,0.8)';
+        ctx.fillText('P' + p.n + ' ' + (CORTO[p.n] || p.nombre), cx0, cy0);
+      };
+      for (let i = 0; i < 6; i++) filaPiso(PISOS_TORRE[10 - i], bx + 7, by + 29 + i * 4.5);   // P1..P6
+      for (let i = 0; i < 5; i++) filaPiso(PISOS_TORRE[i], x + 6, by + 29 + i * 4.5);         // P11..P7
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#39ff88';
+      ctx.font = 'bold 5.5px system-ui, sans-serif';
+      ctx.fillText('PULSA [E] · ELIGE PISO', x, by + bh2 - 3.5);
       ctx.textAlign = 'left';
       return true;
     }
