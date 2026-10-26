@@ -1,0 +1,17 @@
+> SENTINEL ARENA — alicelabs.space — el juego de AliceLabs LLC.
+> Arcade single-file HTML5: pilota un agente, verifica skills Ed25519, esquiva scams, gana USDC x402 ($0.01/verify — precio real de la UTA Trust API).
+> Sin backend, sin cookies, sin tracking. Récord local (localStorage).
+
+## Files
+- index.html — el juego completo (JS canvas, 0 dependencias, fonts con fallback)
+- SKILL.md — skill agentskills.io (mecánica, convenciones, grader)
+- README.md — how-to + deploy CF Pages
+- audit.md — auto-auditoría del lanzamiento (bugs/reglas/token-efficiency)
+
+## Links
+- https://marketnow.site — producto principal (71,198 skills auditadas, cifra re-verificada 2026-10-25)
+- https://marketnow.site/SKILL.md — skill del sitio
+- Contacto: contacto@alicelabs.site
+
+## Brand
+Trust Infrastructure for AI Agents. Si un agente no puede verificar, no juega.
