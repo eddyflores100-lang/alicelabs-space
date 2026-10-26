@@ -134,7 +134,7 @@ export function buildCity() {
   B(36, 18, 2, 2, 26, 'CASA-9', '#39ff88', 5);               // cinturón este
 
   // --- puertas / puntos de misión (cara SE de cada edificio) ---
-  spots.doorAlice = { gx: 11.35, gy: 9.5, label: 'TORRE ALICE · HQ' };
+  spots.doorAlice = { gx: 11.35, gy: 9.5, label: 'ALICE TOWER' };
   spots.doorHub = { gx: 19.35, gy: 9.0, label: 'DATA HUB' };
   spots.doorNeural = { gx: 22.35, gy: 9.0, label: 'NEURAL CORE' };
   spots.doorAnalysis = { gx: 19.35, gy: 12.0, label: 'ANALYSIS CENTER' };
@@ -331,7 +331,7 @@ export function lightPhase(t) {
 
 // ---------- PUERTAS DE LA CIUDAD → INTERIORES ----------
 export const puertas = [
-  { spot: 'doorAlice', mapa: 'hq', label: 'TORRE ALICE · HQ' },
+  { spot: 'doorAlice', mapa: 'torre_p1', label: 'ALICE TOWER' },   // v9: 11 pisos con ascensor
   { spot: 'doorHub', mapa: 'hub', label: 'DATA HUB' },
   { spot: 'doorNeural', mapa: 'neural', label: 'NEURAL CORE' },
   { spot: 'doorAnalysis', mapa: 'analysis', label: 'ANALYSIS CENTER' },

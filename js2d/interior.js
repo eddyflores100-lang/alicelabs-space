@@ -11,7 +11,8 @@ import { NPC } from './agents.js';
 import { registerMap, setCurrent } from './maps.js';
 
 // ---------- FÁBRICA DE INTERIORES ----------
-function room(id, w, h, name, spawn) {
+// (exportados v9: torre.js reutiliza la fábrica para los 11 pisos)
+export function room(id, w, h, name, spawn) {
   const m = {
     id, w, h, name,
     spawn: spawn || [w / 2, h - 1.6],
@@ -29,38 +30,38 @@ function room(id, w, h, name, spawn) {
   registerMap(m);
   return m;
 }
-const ii = (m, x, y) => y * m.w + x;
-function suelo(m, x0, y0, x1, y1, t) {
+export const ii = (m, x, y) => y * m.w + x;
+export function suelo(m, x0, y0, x1, y1, t) {
   for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++)
     if (x > 0 && y > 0 && x < m.w - 1 && y < m.h - 1) m.tiles[ii(m, x, y)] = t;
 }
-function solidBox(m, x0, y0, x1, y1) {
+export function solidBox(m, x0, y0, x1, y1) {
   for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) m.solid[ii(m, x, y)] = 1;
 }
 // muro interno con vanos de puerta (gaps = [[x,y],…])
-function muro(m, x0, y0, x1, y1, gaps = []) {
+export function muro(m, x0, y0, x1, y1, gaps = []) {
   for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
     if (gaps.some(g => g[0] === x && g[1] === y)) continue;
     m.tiles[ii(m, x, y)] = 5; m.solid[ii(m, x, y)] = 1;
   }
 }
-function P(m, tipo, gx, gy, solido = true, data = null) {
+export function P(m, tipo, gx, gy, solido = true, data = null) {
   m.props.push({ tipo, gx, gy, data });
   if (solido) m.solid[ii(m, Math.floor(gx), Math.floor(gy))] = 1;
 }
-function IT(m, tipo, gx, gy, label, data = null) {
+export function IT(m, tipo, gx, gy, label, data = null) {
   m.inter.push({ tipo, gx, gy, label, done: false, data });
 }
-function NPCa(m, def) {                       // interiores: siempre visibles (su turno es ahí)
+export function NPCa(m, def) {                // interiores: siempre visibles (su turno es ahí)
   const n = new NPC({ grupo: 'fijo', ...def });
   m.npcs.push(n);
   return n;                                     // v8.2: devuelve ref (chats del AGENTS HUB)
 }
-function salida(m, x0, x1, y) {
+export function salida(m, x0, x1, y) {
   for (let x = x0; x <= x1; x++) m.tiles[ii(m, x, y)] = 6;
   m.exit = { x0, x1, y };
 }
-const PAL = (skin, hair, jacket, pants) => ({ skin, hair, jacket, pants });
+export const PAL = (skin, hair, jacket, pants) => ({ skin, hair, jacket, pants });
 
 // ============================================================
 // KIT DE BAÑO (vida diaria)

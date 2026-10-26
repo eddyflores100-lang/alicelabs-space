@@ -354,3 +354,43 @@ body.touch #touch-ui { display: block; }
   .splash-badge { margin-top: 10px; font-size: 10px; }
   .rotar-t1 { font-size: 15px; }
 }
+
+/* ============================================================
+   v9 ALICE TOWER — panel modal (ascensor, términos, canales,
+   RAG, MCP, directorio) + botón de convocatoria
+   ============================================================ */
+#panel-torre { position: fixed; inset: 0; z-index: 260; display: flex; align-items: center; justify-content: center; background: rgba(2,4,10,0.72); }
+#panel-torre.hidden { display: none; }
+.pt-box { width: min(620px, 94vw); max-height: 84vh; background: linear-gradient(160deg, #0b1022, #0e1630 60%, #101b3c); border: 1px solid rgba(0,240,255,0.45); border-radius: 12px; box-shadow: 0 0 40px rgba(0,240,255,0.18), inset 0 0 24px rgba(0,240,255,0.05); display: flex; flex-direction: column; }
+.pt-head { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; border-bottom: 1px solid rgba(0,240,255,0.25); font: bold 13px monospace; color: #00f0ff; letter-spacing: 1px; }
+#pt-close { background: none; border: 1px solid rgba(0,240,255,0.4); color: #00f0ff; border-radius: 6px; width: 26px; height: 26px; cursor: pointer; font: bold 13px monospace; }
+#pt-body { padding: 12px 14px; overflow-y: auto; font: 12px/1.6 monospace; color: #cfe6ff; }
+#pt-body p { margin: 6px 0; }
+.pt-fila { display: flex; gap: 10px; align-items: center; width: 100%; text-align: left; background: rgba(10,16,38,0.8); border: 1px solid rgba(0,240,255,0.28); border-radius: 8px; padding: 8px 10px; margin-bottom: 8px; cursor: pointer; color: #e6f4ff; }
+.pt-fila:hover { border-color: #00f0ff; background: rgba(0,240,255,0.08); }
+.pt-fila:disabled { opacity: 0.45; cursor: default; }
+.pt-fila.act { border-color: #ffd23f; }
+.pt-fila .pt-n { font: bold 12px monospace; color: #ffd23f; width: 34px; flex-shrink: 0; }
+.pt-d { font-size: 10px; color: #8fb0d8; }
+.pt-btn { background: linear-gradient(180deg, #00b4d8, #0077b6); border: none; color: #03121e; font: bold 12px monospace; padding: 9px 16px; border-radius: 8px; cursor: pointer; }
+.pt-btn:active { transform: translateY(1px); }
+.pt-inp { width: 100%; box-sizing: border-box; background: #0a0f24; border: 1px solid rgba(0,240,255,0.35); color: #e6f4ff; font: 12px monospace; padding: 8px; border-radius: 6px; margin: 4px 0 10px; }
+.pt-tag { font: bold 10px monospace; padding: 2px 8px; border-radius: 20px; }
+.pt-ok { background: rgba(57,255,136,0.15); color: #39ff88; border: 1px solid rgba(57,255,136,0.5); }
+.pt-no { background: rgba(255,210,63,0.12); color: #ffd23f; border: 1px solid rgba(255,210,63,0.45); }
+.pt-h3 { color: #00f0ff; font: bold 12px monospace; margin: 10px 0 4px; letter-spacing: 1px; }
+.pt-res { background: rgba(10,16,38,0.8); border: 1px solid rgba(0,240,255,0.25); border-left: 3px solid #39ff88; border-radius: 6px; padding: 8px 10px; margin-bottom: 8px; font-size: 11px; }
+.pt-res b { color: #7ae7ff; }
+
+/* botón de convocatoria (solo escritorio; el móvil tiene el 📣 táctil) */
+#btn-convocar { display: none; }
+body:not(.touch) #btn-convocar {
+  display: block; position: fixed; bottom: 44px; left: 50%; transform: translateX(-50%);
+  z-index: 120; background: linear-gradient(180deg, #ffb347, #e6510f); border: 1px solid #ffd23f;
+  color: #20080a; font: bold 12px monospace; padding: 9px 16px; border-radius: 22px; cursor: pointer;
+  box-shadow: 0 0 18px rgba(255,120,60,0.45); letter-spacing: 1px;
+}
+body:not(.touch) #btn-convocar:hover { filter: brightness(1.12); }
+
+/* 📣 táctil: encima del botón grande E */
+.tbtn[data-k="r"] { right: 14px; bottom: 120px; width: 46px; height: 46px; font-size: 19px; }

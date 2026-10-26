@@ -31,6 +31,7 @@ export function initTouch() {
     <div id="joy"><div id="knob"></div></div>
     <div id="tbtns">
       <button class="tbtn big" data-k="e">E</button>
+      <button class="tbtn" data-k="r" title="Convocar reunión">📣</button>
       <button class="tbtn" data-k="m">MAPA</button>
       <button class="tbtn mini" data-k="+">+</button>
       <button class="tbtn mini" data-k="-">−</button>

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>ALICE CITY v8 — CIUDAD VIVA · AGENTS HUB</title>
+<title>ALICE CITY v9 — TORRE ALICE · MCP · RAG · API</title>
 <link rel="stylesheet" href="css/style2d.css">
 </head>
 <body>
@@ -26,7 +26,7 @@
   <button id="tg-menu" class="mtn">☰ MENÚ</button>
   <button id="tg-chat" class="mtn">💬</button>
   <a href="index3d.html" title="versión anterior 3D">MODO 3D v4</a>
-  <span class="ver">v8.0 · ciudad viva · ALICELABS</span>
+  <span class="ver">v9.0 · torre + mcp · ALICELABS</span>
 </div>
 
 <!-- ===== MENÚ IZQUIERDO ===== -->
@@ -42,7 +42,7 @@
   <div class="panel" id="panel-mapa">
     <h3>VISTA ESTRATÉGICA</h3>
     <canvas id="mini" width="216" height="216"></canvas>
-    <div class="card-d" style="margin-top:8px">Metrópoli 40×40: 4 avenidas por eje, 9 distritos, cinturón verde y 18 puertas con interior (nuevo: AGENTS HUB en Innovación). Pulsá <b>M</b> en juego para la vista aérea.</div>
+    <div class="card-d" style="margin-top:8px">Metrópoli 40×40: 4 avenidas por eje, 9 distritos, cinturón verde, 18 puertas con interior y la <b>ALICE TOWER</b> de 11 pisos con ascensor. Pulsá <b>M</b> en juego para la vista aérea.</div>
   </div>
   <div class="panel hidden" id="panel-agentes">
     <h3>RED DE AGENTES</h3>
@@ -91,19 +91,31 @@
 
 <div id="toasts"></div>
 
+<!-- ===== v9 TORRE: PANEL MODAL (ascensor · términos · canales · RAG · MCP) ===== -->
+<div id="panel-torre" class="hidden">
+  <div class="pt-box">
+    <div class="pt-head"><span id="pt-titulo">ALICE TOWER</span><button id="pt-close">✕</button></div>
+    <div id="pt-body"></div>
+  </div>
+</div>
+
+<!-- ===== v9: BOTÓN DE CONVOCATORIA (escritorio; móvil usa el 📣 táctil) ===== -->
+<button id="btn-convocar" title="Convocar reunión (tecla R)">📣 CONVOCAR</button>
+
 <!-- ===== SPLASH ===== -->
 <div id="splash">
   <div class="splash-logo">ALICE <span>CITY</span></div>
-  <div class="splash-sub">AI OPERATIONS COMMAND · CIUDAD VIVA EDITION</div>
-  <div class="splash-badge">v8.2 · AGENTS HUB · DÍA/NOCHE · 18 INTERIORES · MÓVIL HORIZONTAL + PC</div>
+  <div class="splash-sub">AI OPERATIONS COMMAND · TORRE EDITION</div>
+  <div class="splash-badge">v9.0 · ALICE TOWER 11 PISOS · MCP · RAG · API · DÍA/NOCHE · MÓVIL + PC</div>
   <button id="btn-entrar">▶ ENTRAR A LA CIUDAD</button>
   <div class="splash-controles">
     <span><b>WASD / JOY</b>mover</span>
     <span><b>E</b>entrar · hablar</span>
+    <span><b>R / 📣</b>convocar reunión</span>
     <span><b>M</b>vista aérea</span>
     <span><b>+/-</b>zoom</span>
   </div>
-  <div class="splash-pie">ALICELABS · LOS AGENTES SE REÚNEN, COMPARTEN SKILLS Y TRABAJAN POR ALC</div>
+  <div class="splash-pie">ALICELABS · LA TORRE CONECTA A TODOS LOS AGENTES: REUNIONES, SKILLS, CANALES Y ALC</div>
 </div>
 
 <script>

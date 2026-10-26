@@ -9,6 +9,7 @@ import { drawGround, drawBuilding, drawProp, drawLights, drawCarBody, buildGroun
 import { player, updatePlayer, npcs, spawnNPCs, drawAgent, drawSeated, setCarBlock } from './agents.js';
 import { cars, spawnCars, updateCars, drawCars, carBlock, setPedList } from './cars.js';
 import { buildAllInteriors, drawInteriorGround, drawWallTile, drawIProp } from './interior.js';
+import { buildTorre, updateTorre, convocarReunion, abrirPanelTorre, cerrarPanelTorre, irPiso, drawPropTorre, PISOS_TORRE } from './torre.js';
 import { MAPS, setCurrent, getCurrent } from './maps.js';
 import { initUI, updateHUD, pushLog, toast, chatPush, startBots, qEstado, aceptarQuest, completarQuest, QUESTS, applyEquipped, drawMini, renderTareas, showPanel } from './ui.js';
 import { initTouch } from './touch.js';
@@ -17,6 +18,7 @@ import { initTouch } from './touch.js';
 buildCity();
 buildGroundCache();   // suelo pre-renderizado con gradientes y textura (v8)
 buildAllInteriors();
+buildTorre();         // v9: ALICE TOWER · 11 pisos con ascensor
 spawnNPCs();
 spawnCars();
 setCarBlock(carBlock);
@@ -45,7 +47,10 @@ window.__alice = {
     G.modo = 'interior'; G.mapId = mapId;
     player.gx = m.spawn[0]; player.gy = m.spawn[1];
     return m.name;
-  }
+  },
+  convocar: convocarReunion,
+  torre: abrirPanelTorre,
+  pisos: PISOS_TORRE
 };
 
 // ---------- splash ----------
@@ -66,7 +71,7 @@ document.getElementById('btn-entrar').addEventListener('click', () => {
   startBots();
   sfx.tarea();
   pushLog('Operador conectado a la red de agentes', 'verde');
-  chatPush('Ada', '¡NUEVO AGENTS HUB! La oficina donde los agentes se reúnen: open-space, pizarra de skills y turnos pagados en ALC. Queda en el distrito Innovación.', '#00f0ff');
+  chatPush('Ada', '¡ALICE TOWER ABIERTA! 11 pisos con ascensor: reuniones con botón de convocatoria (tecla R), WhatsApp/Telegram, RAG, MCP y API. Queda en la Plaza Central.', '#00f0ff');
   setTimeout(() => toast(window.__esTouch ? 'Joystick para moverte · E para entrar' : 'Usa WASD · E entrar/hablar · M mapa'), 800);
 });
 
@@ -137,9 +142,10 @@ function buscarInteraccion() {
         return;
       }
     }
-    // salida por el tapete
+    // salida por el tapete (en la torre: bajar al lobby)
     if (player.gy > m.exit.y - 0.42 && player.gx > m.exit.x0 - 0.4 && player.gx < m.exit.x1 + 1.4) {
-      cerca = { tipo: 'salida', label: 'SALIR A LA CIUDAD' };
+      const esTorre = G.mapId && G.mapId.startsWith('torre_') && G.mapId !== 'torre_p1';
+      cerca = { tipo: 'salida', label: esTorre ? 'BAJAR AL LOBBY (P1)' : 'SALIR A LA CIUDAD' };
     }
   }
 }
@@ -199,7 +205,10 @@ function interactuar() {
   if (cerca.tipo !== 'npc') sfx.ui(); else sfx.talk();
   switch (cerca.tipo) {
     case 'puerta': entrarInterior(cerca.ref); break;
-    case 'salida': salirACiudad(); break;
+    case 'salida':
+      if (G.mapId && G.mapId.startsWith('torre_') && G.mapId !== 'torre_p1') irPiso('torre_p1');
+      else salirACiudad();
+      break;
     case 'npc': hablarCon(cerca.ref); break;
     case 'rack': {
       cerca.ref.done = true;
@@ -212,6 +221,12 @@ function interactuar() {
       const hq = MAPS['hq'];
       const racksHq = hq.inter.filter(i => i.tipo === 'rack');
       if (racksHq.every(r => r.done) && qEstado('P7') === 'activa') completarQuest('P7');
+      // v9: el Data Center de la Torre (P8) también paga el turno de racks
+      const cur = getCurrent();
+      if (cur && cur.id === 'torre_p8') {
+        const racksT = cur.inter.filter(i => i.tipo === 'rack');
+        if (racksT.every(r => r.done) && qEstado('P7') === 'activa') completarQuest('P7');
+      }
       break;
     }
     case 'armario':
@@ -271,6 +286,16 @@ function interactuar() {
       it.done = true;
       break;
     }
+    // ---- v9 ALICE TOWER: ascensor, términos, canales, RAG, MCP, convocatoria ----
+    case 'ascensor': abrirPanelTorre('ascensor'); break;
+    case 'terminos': abrirPanelTorre('terminos'); break;
+    case 'politicas': abrirPanelTorre('politicas'); break;
+    case 'config_wa': abrirPanelTorre('wa'); break;
+    case 'config_tg': abrirPanelTorre('tg'); break;
+    case 'rag': abrirPanelTorre('rag'); break;
+    case 'mcp': abrirPanelTorre('mcp'); break;
+    case 'directorio': abrirPanelTorre('directorio'); break;
+    case 'convocar': convocarReunion(); break;
     // ---- vida diaria v7 ----
     case 'ducha':
       fadeTo(() => {
@@ -354,7 +379,29 @@ const DIALOGOS = {
   Vek: ['Trabajo desde casa: el Hub me manda tickets aquí.', 'Mi gato Bit audita mis commits. MIAU incluido.'],
   Sole: ['CASA-3 es pequeña pero con baño propio, jeje.', 'Lo mejor del cinturón norte: silencio total.'],
   Iker: ['Vivo en el cinturón este. El commute vale la pena.', 'Cuando hay neón, hay vida.'],
-  Bit: ['MIAU-0002 · sys.audit(OK)', 'Traducción: Vek trabaja demasiado. Dale cariño.']
+  Bit: ['MIAU-0002 · sys.audit(OK)', 'Traducción: Vek trabaja demasiado. Dale cariño.'],
+  // ---- v9 ALICE TOWER ----
+  'Recepción Uma': ['Bienvenido a la ALICE TOWER: 11 pisos, el edificio más alto de la ciudad.', 'El kiosco ámbar tiene los términos del servicio; el ascensor te lleva a cualquier piso.'],
+  'Portero Max': ['Tornos operativos: los visitantes aceptan términos antes de pasar.', 'El helipuerto de la P11 aterriza drones de la red cada media hora.'],
+  'SOC Delta': ['Cámaras al 100%, cero alertas en 72 horas.', 'Toda acción en la red queda en el registro de accesos.'],
+  'Auditor Lumen': ['Auditoría mensual en curso: tokens, accesos y ALC.', 'Tres avisos y el token se suspende. Así de simple.'],
+  'Operadora Mel': ['WhatsApp y Telegram se configuran en los terminales verdes y azules.', 'Los webhooks entran firmados: cero spam en la red.'],
+  'Bots Tico': ['Mi canal responde en 200 ms promedio.', 'Conecta tu bot y el hub lo archiva todo en /v1/messages.'],
+  'Lead Ruya': ['Bienvenido a la sala ejecutiva: el botón naranja convoca al equipo.', 'En la reunión se comparten skills, métricas y roadmap. Tu asistencia paga 8 ALC.'],
+  'Directora Pixy': ['La paleta neón de la torre salió de este estudio.', 'Cada piso tiene su identidad visual: diseño de agentes para agentes.'],
+  'Diseñador Glitch': ['Los mockups del directorio los hice yo, ¿los notaste?', 'El moodboard de la P5 huele a café y pixeles.'],
+  'Dev Lead Rust': ['Build v9.0.0-rc1 en verde: la torre compila limpia.', 'Cada deploy pasa CI antes de tocar producción.'],
+  'Coder Juno': ['Estoy integrando el gateway MCP con la sala de reuniones.', 'El rollback está a un comando de distancia. Tranquilidad.'],
+  'Tester Wisp': ['Reporté 14 bugs esta semana: 14 arreglados.', 'Probar es amar: rompo cosas antes que los usuarios.'],
+  'Data Minerva': ['Las gráficas de ALC suben más rápido que el ascensor.', 'Cada misión pagada alimenta mis dashboards.'],
+  'Analista Curva': ['La curva de agentes activos es una línea recta al cielo.', 'Predigo congestión de canales antes del almuerzo.'],
+  'SRE Nube': ['Ocho racks en verde y refrigeración perfecta.', 'El RAG reindexa cada skill compartida en la P4.'],
+  'Keeper Dato': ['Custodio la knowledge base: políticas, términos, guías.', 'Nada se pierde: todo se indexa.'],
+  'Arq. Mesh': ['El gateway MCP expone 7 tools sobre JSON-RPC 2.0.', 'Cualquier agente externo se conecta con un cliente MCP estándar.'],
+  'API Vera': ['La REST API habla Bearer token y responde en milisegundos.', 'Rate limit 120/min: justicia para todos los nodos.'],
+  'Jefa Vega': ['Esta torre coordina a los 3450 agentes de la red.', 'La bóveda P10 guarda el corazón económico: un millón de ALC en multi-firma.'],
+  'Asistente Robin': ['Agenda de la Jefa llena hasta el sky deck.', 'Si necesitas firmas, el vault exige tres de cinco.'],
+  'Piloto Zeph': ['Desde aquí la ciudad entera cabe en una mirada.', 'El helipuerto recibe a los drones mensajeros de la red.']
 };
 function hablarCon(n) {
   n.talk = DIALOGOS[n.name] ? DIALOGOS[n.name][Math.floor(Math.random() * (DIALOGOS[n.name].length))] : 'Red estable, operador.';
@@ -371,6 +418,27 @@ function hablarCon(n) {
       const q = QUESTS.find(x => x.id === n.questId);
       if (!q.spots) completarQuest(n.questId);
       else n.talk = 'Sigue con la misión: ' + q.d;
+    }
+  }
+}
+
+// ---------- progreso de misiones por pisos de la torre (v9) ----------
+function checkTowerQuests() {
+  if (G.modo !== 'interior' || !G.mapId) return;
+  for (const q of QUESTS) {
+    if (!q.pisos) continue;
+    const st = qEstado(q.id);
+    if (st !== 'activa') continue;
+    const s = G.quests[q.id];
+    if (q.pisos[s.paso || 0] !== G.mapId) continue;
+    s.paso = (s.paso || 0) + 1;
+    sfx.moneda();
+    saveState();
+    if (s.paso >= q.pisos.length) {
+      completarQuest(q.id);
+    } else {
+      toast(`Piso alcanzado (${s.paso}/${q.pisos.length})`);
+      pushLog(`Misión ${q.id}: piso ${s.paso}/${q.pisos.length}`, 'amar');
     }
   }
 }
@@ -534,7 +602,7 @@ function drawInterior(t) {
   for (let y = 0; y < m.h; y++) for (let x = 0; x < m.w; x++) {
     if (m.tiles[y * m.w + x] === 5) objs.push({ d: x + y + 0.05, f: () => drawWallTile(x, y) });
   }
-  for (const p of m.props) objs.push({ d: p.gx + p.gy + 0.05, f: () => drawIProp(p, t) });
+  for (const p of m.props) objs.push({ d: p.gx + p.gy + 0.05, f: () => { if (!drawPropTorre(p, t)) drawIProp(p, t); } });
   for (const n of m.npcs) objs.push({
     d: n.gx + n.gy, f: () => {
       const w = gridToWorld(n.gx, n.gy);
@@ -588,6 +656,10 @@ function loop(now) {
     if (m) {
       for (const n of m.npcs) n.update(dt, m.npcs);
       if (m.chats) updateChats(m, dt);   // v8.2: agentes conversando en el hub
+      if (G.mapId && G.mapId.startsWith('torre_')) {
+        updateTorre(m, dt);              // v9: latido de la reunión de la torre
+        checkTowerQuests();              // v9: misiones por pisos
+      }
     }
   }
   buscarInteraccion();
@@ -602,6 +674,8 @@ function loop(now) {
   if (consume('+') || consume('=')) { zoomMult = clamp(zoomMult * 1.2, 0.35, 2.6); aplicarZoom(); }
   if (consume('-')) { zoomMult = clamp(zoomMult / 1.2, 0.35, 2.6); aplicarZoom(); }
   if (consume('e')) interactuar();
+  // v9: tecla R = botón de convocatoria de reunión (y Esc cierra el panel)
+  if (consume('r')) convocarReunion();
   cam.zoom = lerp(cam.zoom, zoomObjetivo, dt * 6);
 
   // cámara sigue al jugador

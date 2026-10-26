@@ -15,15 +15,18 @@ export const QUESTS = [
   { id: 'P3', t: 'Entrega urgente: Neural Core', d: 'Lleva el paquete hasta la puerta del NEURAL CORE.', alc: 15, spots: ['doorNeural'], giver: 'Bella' },
   { id: 'P4', t: 'Inventario Mercado-Logística', d: 'Pasa por el MERCADO y cierra el conteo en LOGÍSTICA.', alc: 14, spots: ['doorMercado', 'doorLogistica'], giver: 'Rex' },
   { id: 'P5', t: 'Inspección de semáforos', d: 'Verifica los cruces NW y SE del anillo vial.', alc: 12, spots: ['q5a', 'q5b'], giver: null },
-  { id: 'P6', t: 'Reunión en la Torre Alice', d: 'Entra al HQ y habla con la Jefa Vega en la sala de conferencias.', alc: 20, giver: 'Ada', oculta: true },
-  { id: 'P7', t: 'Turno en el Server Room', d: 'Activa los 3 racks del server room del HQ (tecla E).', alc: 18, giver: 'Ada', oculta: true },
+  { id: 'P6', t: 'Consejo en la Dirección', d: 'Sube a la P10 de la ALICE TOWER y habla con la Jefa Vega en su despacho.', alc: 20, giver: 'Ada', oculta: true },
+  { id: 'P7', t: 'Turno en el Data Center', d: 'Activa los 8 racks del Data Center (P8) de la ALICE TOWER con la tecla E.', alc: 18, giver: 'Ada', oculta: true },
   { id: 'P8', t: 'Ronda del cinturón', d: 'Ronda completa por las 4 esquinas del cinturón verde.', alc: 25, spots: ['q8a', 'q8b', 'q8c', 'q8d'], giver: null },
   { id: 'P9', t: 'Puertas de la ciudad', d: 'Visita las puertas de DATA HUB, ANALYSIS y SRV-7.', alc: 15, spots: ['doorHub', 'doorAnalysis', 'doorSrv'], giver: null },
   { id: 'P10', t: 'Vida de vecino', d: 'Visita la CASA-7, la CASA-12 y tu APTO del distrito Mercado.', alc: 20, spots: ['doorCasa7', 'doorCasa12', 'doorApto'], giver: null },
   { id: 'P11', t: 'Rutina de barrio', d: 'Pasa por la CAFETERÍA, el GYM NEÓN y las RESIDENCIAS.', alc: 22, spots: ['doorCafe', 'doorGym', 'doorResid'], giver: null },
   { id: 'P12', t: 'Paseo en el Parque Sur', d: 'Recorre los 3 puntos del Parque Sur de la metrópoli.', alc: 15, spots: ['q12a', 'q12b', 'q12c'], giver: null },
   { id: 'P13', t: 'Reunión de agentes', d: 'Entra al AGENTS HUB y coordina el equipo con Lead Ruya.', alc: 20, npc: 'Lead Ruya', giver: null },
-  { id: 'P14', t: 'Turno en el hub', d: 'Trabaja un turno en el AGENTS HUB: mesa libre + tecla E.', alc: 15, giver: null }
+  { id: 'P14', t: 'Turno en el hub', d: 'Trabaja un turno en el AGENTS HUB: mesa libre + tecla E.', alc: 15, giver: null },
+  { id: 'P15', t: 'Tour ejecutivo de la Torre', d: 'Visita Diseño (P5), Desarrollo (P6), Analítica (P7) y Dirección (P10) con el ascensor.', alc: 30, pisos: ['torre_p5', 'torre_p6', 'torre_p7', 'torre_p10'], giver: 'Recepción Uma' },
+  { id: 'P16', t: 'Convocatoria general', d: 'Pulsa el botón de convocatoria (tecla R / 📣) y reúne al equipo en la P4.', alc: 20, giver: null },
+  { id: 'P17', t: 'Canales conectados', d: 'Configura WhatsApp y Telegram en Comunicaciones (P3) de la Torre.', alc: 25, giver: null }
 ];
 
 export function qEstado(id) {
@@ -246,7 +249,7 @@ export function renderTareas() {
     let btn = '';
     if (st === 'disponible') btn = `<button data-q="${q.id}" class="mini-btn verde">ACEPTAR</button>`;
     if (st === 'oculta') btn = `<span class="hint">Entra a la Torre Alice</span>`;
-    const prog = st === 'activa' && q.spots ? `<div class="prog">Paso ${Math.min((G.quests[q.id].paso || 0) + 1, q.spots.length)}/${q.spots.length}</div>` : '';
+    const prog = st === 'activa' && (q.spots || q.pisos) ? `<div class="prog">Paso ${Math.min((G.quests[q.id].paso || 0) + 1, (q.spots || q.pisos).length)}/${(q.spots || q.pisos).length}</div>` : '';
     return `<div class="card ${st === 'hecha' ? 'op' : ''}">
       <div class="card-top"><b>${q.t}</b>${tag}</div>
       <div class="card-d">${q.d}</div>
