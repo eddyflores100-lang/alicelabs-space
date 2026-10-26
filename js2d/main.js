@@ -1,11 +1,11 @@
 // ============================================================
-// ALICE CITY v6 — MAIN (loop, puertas multi-mapa, interacciones)
-// Ciudad principal + 11 interiores: entra por puertas [E],
-// sale por el tapete de salida. Como en un juego completo.
+// ALICE CITY v8 — MAIN (loop, reloj de juego, ambiente, puertas)
+// Ciudad viva: horarios de agentes, ciclo día/noche, nubes,
+// pájaros y luciérnagas. Resolución alta con gradientes.
 // ============================================================
-import { G, ctx, cam, VW, VH, gridToWorld, toScreen, keys, consume, clamp, lerp, dist2, fadeTo, addCoins, saveState, audioInit, sfx, onCoinsChange } from './engine.js';
+import { G, ctx, cam, VW, VH, gridToWorld, toScreen, keys, consume, clamp, lerp, dist2, fadeTo, addCoins, saveState, audioInit, sfx, onCoinsChange, tickReloj, faseDia } from './engine.js';
 import { buildCity, spots, buildings, props, crosswalks, distritos, tile as cityTileArr, puertas, MAPC, MAPR } from './city.js';
-import { drawGround, drawBuilding, drawProp, drawLights, drawCarBody } from './draw.js';
+import { drawGround, drawBuilding, drawProp, drawLights, drawCarBody, buildGroundCache, drawNubes, drawSombrasNubes, drawLuciernagas, drawAmbiente, drawCielo } from './draw.js';
 import { player, updatePlayer, npcs, spawnNPCs, drawAgent, drawSeated, setCarBlock } from './agents.js';
 import { cars, spawnCars, updateCars, drawCars, carBlock, setPedList } from './cars.js';
 import { buildAllInteriors, drawInteriorGround, drawWallTile, drawIProp } from './interior.js';
@@ -15,6 +15,7 @@ import { initTouch } from './touch.js';
 
 // ---------- arranque ----------
 buildCity();
+buildGroundCache();   // suelo pre-renderizado con gradientes y textura (v8)
 buildAllInteriors();
 spawnNPCs();
 spawnCars();
@@ -57,18 +58,18 @@ document.getElementById('btn-entrar').addEventListener('click', () => {
   startBots();
   sfx.tarea();
   pushLog('Operador conectado a la red de agentes', 'verde');
-  chatPush('Ada', 'Bienvenido a ALICE CITY v7. Metrópoli 40×40 con 17 interiores: cafetería, gym, clínica y casas con baño. ¡Vida de agentes!', '#ffd23f');
+  chatPush('Ada', '¡ALICE CITY v8 CIUDAD VIVA! Ciclo día/noche con horarios: los agentes van al trabajo, pasean y descansan. ¡Mira el reloj!', '#ffd23f');
   setTimeout(() => toast(window.__esTouch ? 'Joystick para moverte · E para entrar' : 'Usa WASD · E entrar/hablar · M mapa'), 800);
 });
 
 // ---------- cámara ----------
 cam.x = gridToWorld(player.gx, player.gy).x;
 cam.y = gridToWorld(player.gx, player.gy).y;
-let zoomObjetivo = 1;
+let zoomObjetivo = 1.6;   // v8: vista cercana y definida (los objetos se ven GRANDES)
 
 addEventListener('wheel', e => {
   if (!G.iniciado) return;
-  zoomObjetivo = clamp(zoomObjetivo * (e.deltaY > 0 ? 0.9 : 1.1), 0.62, 1.7);
+  zoomObjetivo = clamp(zoomObjetivo * (e.deltaY > 0 ? 0.9 : 1.1), 0.55, 2.8);
   G.overview = false;
 });
 
@@ -124,7 +125,7 @@ function entrarInterior(p) {
     player.gx = m.spawn[0]; player.gy = m.spawn[1];
     cam.x = gridToWorld(player.gx, player.gy).x;
     cam.y = gridToWorld(player.gx, player.gy).y;
-    zoomObjetivo = 1.15;
+    zoomObjetivo = 1.9;
     if (p.mapa === 'hq' && !G.v5hq) {
       G.v5hq = true; saveState(); renderTareas();
     }
@@ -143,7 +144,7 @@ function salirACiudad() {
     player.gy = s ? s.gy + 0.6 : 6.5;
     cam.x = gridToWorld(player.gx, player.gy).x;
     cam.y = gridToWorld(player.gx, player.gy).y;
-    zoomObjetivo = 1;
+    zoomObjetivo = 1.6;
     pushLog('Vuelves a la ciudad', 'cian');
     sfx.puerta();
   });
@@ -392,6 +393,7 @@ function drawPuertas(t) {
 // ---------- dibujo de la ciudad ----------
 function drawCity(t) {
   drawGround(t);
+  drawSombrasNubes(t);   // nubes a ras de suelo (no lavan los objetos)
   // objetos ordenados por profundidad
   const objs = [];
   for (const b of buildings) objs.push({ d: b.gx + b.w + b.gy + b.d + 0.4, f: () => drawBuilding(b, t) });
@@ -402,6 +404,9 @@ function drawCity(t) {
   objs.sort((a, b) => a.d - b.d);
   drawLights(t);
   for (const o of objs) o.f();
+  // vida del ambiente: nubes al viento + luciérnagas nocturnas
+  drawNubes(t);
+  drawLuciernagas(t);
   // estela neón
   for (const tr of player.trail) {
     const w = gridToWorld(tr.x, tr.y);
@@ -467,6 +472,7 @@ function loop(now) {
   const dt = Math.min(0.05, (now - last) / 1000);
   last = now;
   G.tiempo += dt;
+  tickReloj(dt);   // reloj del juego: 1 s real = 1 min virtual
 
   // fundido
   if (G.fadeDir === 1) {
@@ -478,7 +484,7 @@ function loop(now) {
   }
 
   if (!G.iniciado) {
-    ctx.fillStyle = '#05060f'; ctx.fillRect(0, 0, VW, VH);
+    drawCielo();
     return;
   }
 
@@ -500,11 +506,11 @@ function loop(now) {
   // zoom suave + overview
   if (consume('m')) {
     G.overview = !G.overview;
-    zoomObjetivo = G.overview ? 0.62 : (G.modo === 'city' ? 1 : 1.15);
+    zoomObjetivo = G.overview ? 0.88 : (G.modo === 'city' ? 1.6 : 1.9);
     sfx.ui();
   }
-  if (consume('+') || consume('=')) zoomObjetivo = clamp(zoomObjetivo * 1.2, 0.62, 1.7);
-  if (consume('-')) zoomObjetivo = clamp(zoomObjetivo / 1.2, 0.62, 1.7);
+  if (consume('+') || consume('=')) zoomObjetivo = clamp(zoomObjetivo * 1.2, 0.55, 2.8);
+  if (consume('-')) zoomObjetivo = clamp(zoomObjetivo / 1.2, 0.55, 2.8);
   if (consume('e')) interactuar();
   cam.zoom = lerp(cam.zoom, zoomObjetivo, dt * 6);
 
@@ -515,12 +521,16 @@ function loop(now) {
 
   // --- draw ---
   ctx.setTransform(1, 0, 0, 1, 0, 0);
-  ctx.fillStyle = '#05060f';
-  ctx.fillRect(0, 0, VW, VH);
+  drawCielo();
   ctx.setTransform(cam.zoom, 0, 0, cam.zoom, VW / 2 - cam.x * cam.zoom, VH / 2 - cam.y * cam.zoom);
-  ctx.imageSmoothingEnabled = false;
+  ctx.imageSmoothingEnabled = true;
 
   if (G.modo === 'city') drawCity(G.tiempo); else drawInterior(G.tiempo);
+
+  // luz ambiente de la hora (tinte de pantalla, nunca negro total)
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  drawAmbiente(G.modo !== 'city');   // en interiores la noche es más suave (luces encendidas)
+  ctx.setTransform(cam.zoom, 0, 0, cam.zoom, VW / 2 - cam.x * cam.zoom, VH / 2 - cam.y * cam.zoom);
 
   // indicador de interacción
   if (cerca) {
@@ -612,6 +622,11 @@ try {
     const id = qs.get('map');
     const m = setCurrent(id);
     if (m) { G.modo = 'interior'; G.mapId = id; player.gx = m.spawn[0]; player.gy = m.spawn[1]; }
+  }
+  if (qs.get('hora')) {
+    // depuración de horarios: ?hora=21 → 21:00
+    const hm = qs.get('hora').split(',');
+    G.relojMin = parseInt(hm[0], 10) * 60 + (hm[1] ? parseInt(hm[1], 10) : 0);
   }
   if (qs.get('auto')) {
     setTimeout(() => document.getElementById('btn-entrar').click(), 300);

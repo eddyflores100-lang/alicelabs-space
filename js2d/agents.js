@@ -1,15 +1,21 @@
 // ============================================================
-// ALICE CITY v5 — AGENTES (player + NPCs)
+// ALICE CITY v8 — AGENTES (player + NPCs)
 // Poses correctas: de pie / caminando / sentado EN SILLA.
-// NPCs solo por aceras, plazas y cruces autorizados.
+// HORARIOS DE VIDA: oficina (9-17 dentro del edificio), campo,
+// ocio (17-21 paseo) y turno nocturno. Maletines, burbujas y
+// presencia con fundido al entrar/salir de edificios.
 // ============================================================
-import { G, ctx, keys, clamp, dist2, hash2 } from './engine.js';
+import { G, ctx, keys, clamp, dist2, hash2, faseDia } from './engine.js';
 import { spots, patrols } from './city.js';
 import { blockedAt, nearestFree, getCurrent } from './maps.js';
 
 // ---------- SPRITES ----------
 // gato mascota (Gato Bot del apto)
 function drawCat(x, y, a, t) {
+  const al = a.alpha === undefined ? 1 : a.alpha;
+  if (al <= 0.03) return;
+  ctx.save();
+  ctx.globalAlpha = al;
   const bob = Math.sin(t * 2 + a.seed * 6) * 0.5;
   const baseY = y - bob;
   ctx.fillStyle = 'rgba(0,0,0,0.35)';
@@ -39,10 +45,15 @@ function drawCat(x, y, a, t) {
     ctx.fillText(a.name, x, baseY - 15);
     ctx.textAlign = 'left';
   }
+  ctx.restore();
 }
 // agente de pie/caminando; paleta: {skin, hair, jacket, pants}
 export function drawAgent(x, y, a, t, zoom) {
   if (a.gato) return drawCat(x, y, a, t);
+  const al = a.alpha === undefined ? 1 : a.alpha;
+  if (al <= 0.03) return;
+  ctx.save();
+  ctx.globalAlpha = al;
   const walk = a.state === 'walk';
   const ph = a.phase;
   const bob = walk ? Math.abs(Math.sin(ph * 8)) * 1.2 : Math.sin(t * 2 + a.seed * 6) * 0.4;
@@ -55,22 +66,39 @@ export function drawAgent(x, y, a, t, zoom) {
   ctx.fillStyle = a.pal.pants;
   ctx.fillRect(x - 3, baseY - 6, 2.5, 6 + legSw * 0.4);
   ctx.fillRect(x + 0.5, baseY - 6, 2.5, 6 - legSw * 0.4);
-  // torso (chaqueta)
-  ctx.fillStyle = a.pal.jacket;
+  // torso (chaqueta) con gradiente vertical para volumen
+  const jg = ctx.createLinearGradient(0, baseY - 13, 0, baseY - 5);
+  jg.addColorStop(0, shadeCol(a.pal.jacket, 1.22)); jg.addColorStop(1, a.pal.jacket);
+  ctx.fillStyle = jg;
   ctx.fillRect(x - 4, baseY - 13, 8, 8);
+  // contorno suave del torso (definición)
+  ctx.strokeStyle = 'rgba(10,14,28,0.55)'; ctx.lineWidth = 1;
+  ctx.strokeRect(x - 4, baseY - 13, 8, 8);
   // detalle chaqueta
-  ctx.fillStyle = 'rgba(255,255,255,0.18)';
+  ctx.fillStyle = 'rgba(255,255,255,0.22)';
   ctx.fillRect(x - 4, baseY - 13, 8, 1);
   // brazos
   ctx.fillStyle = a.pal.jacket;
   ctx.fillRect(x - 5.5, baseY - 12 + (walk ? legSw * 0.5 : 0), 1.8, 6);
   ctx.fillRect(x + 3.7, baseY - 12 - (walk ? legSw * 0.5 : 0), 1.8, 6);
-  // cabeza
-  ctx.fillStyle = a.pal.skin;
+  // cabeza con leve gradiente de piel
+  const sg2 = ctx.createLinearGradient(0, baseY - 19, 0, baseY - 13);
+  sg2.addColorStop(0, shadeCol(a.pal.skin, 1.12)); sg2.addColorStop(1, a.pal.skin);
+  ctx.fillStyle = sg2;
   ctx.fillRect(x - 3, baseY - 19, 6, 6);
   // pelo / casco
   ctx.fillStyle = a.pal.hair;
   ctx.fillRect(x - 3, baseY - 20, 6, 3);
+  // ojos (definición)
+  ctx.fillStyle = '#141824';
+  ctx.fillRect(x - 1.6, baseY - 16.5, 1.1, 1.3); ctx.fillRect(x + 0.7, baseY - 16.5, 1.1, 1.3);
+  // maletín de agente en horario laboral
+  if (a.maletin) {
+    ctx.fillStyle = '#5c4128';
+    ctx.fillRect(x + 4.6, baseY - 8.5 + (walk ? legSw * 0.5 : 0), 3.4, 2.6);
+    ctx.fillStyle = '#7a5a38';
+    ctx.fillRect(x + 4.6, baseY - 9 + (walk ? legSw * 0.5 : 0), 3.4, 0.8);
+  }
   // extras equipados
   if (a.extras) {
     if (a.extras.hat === 'cap') { ctx.fillStyle = a.extras.hatColor; ctx.fillRect(x - 3.5, baseY - 21, 7, 2.5); ctx.fillRect(x - 3.5, baseY - 19, 7, 1.5); }
@@ -93,17 +121,32 @@ export function drawAgent(x, y, a, t, zoom) {
   if (a.talk) {
     ctx.font = '7px monospace'; ctx.textAlign = 'center';
     const w = ctx.measureText(a.talk).width + 8;
-    ctx.fillStyle = 'rgba(240,244,255,0.95)';
+    ctx.fillStyle = 'rgba(248,250,255,0.96)';
     ctx.fillRect(x - w / 2, baseY - 44, w, 11);
+    ctx.strokeStyle = 'rgba(10,14,30,0.4)';
+    ctx.strokeRect(x - w / 2 + 0.5, baseY - 43.5, w - 1, 10);
     ctx.fillStyle = '#0a0d1a';
     ctx.fillText(a.talk, x, baseY - 36);
     ctx.beginPath(); ctx.moveTo(x - 3, baseY - 33); ctx.lineTo(x + 3, baseY - 33); ctx.lineTo(x, baseY - 30); ctx.closePath(); ctx.fill();
     ctx.textAlign = 'left';
   }
+  ctx.restore();
+}
+// aclara u oscurece un color hex (para gradientes del sprite)
+function shadeCol(hex, f) {
+  try {
+    const n = parseInt(hex.slice(1), 16);
+    const r = Math.min(255, ((n >> 16) & 255) * f) | 0, g2 = Math.min(255, ((n >> 8) & 255) * f) | 0, b2 = Math.min(255, (n & 255) * f) | 0;
+    return `rgb(${r},${g2},${b2})`;
+  } catch (e) { return hex; }
 }
 
 // agente SENTADO EN SILLA/ESCRITORIO (pose fija, sin piernas colgando)
 export function drawSeated(x, y, a, t) {
+  const al = a.alpha === undefined ? 1 : a.alpha;
+  if (al <= 0.03) return;
+  ctx.save();
+  ctx.globalAlpha = al;
   ctx.fillStyle = 'rgba(0,0,0,0.3)';
   ctx.beginPath(); ctx.ellipse(x, y + 1, 5, 2, 0, 0, 7); ctx.fill();
   const bob = Math.sin(t * 1.6 + a.seed * 5) * 0.4;
@@ -130,26 +173,89 @@ export function drawSeated(x, y, a, t) {
   if (a.talk) {
     ctx.font = '7px monospace'; ctx.textAlign = 'center';
     const w = ctx.measureText(a.talk).width + 8;
-    ctx.fillStyle = 'rgba(240,244,255,0.95)';
+    ctx.fillStyle = 'rgba(248,250,255,0.96)';
     ctx.fillRect(x - w / 2, baseY - 41, w, 11);
     ctx.fillStyle = '#0a0d1a'; ctx.fillText(a.talk, x, baseY - 33);
     ctx.textAlign = 'left';
   }
+  ctx.restore();
 }
 
 // ---------- NPC ----------
+const BURBUJAS = {
+  manana: ['Al trabajo', 'Buenos días', 'Turno de mañana', '¿Ya café?'],
+  tarde: ['Trabajo tranquilo', 'Reporte listo', 'Reunión en 5'],
+  ocio: ['¿Vamos al gym?', 'Un café por favor', 'Qué día tan bueno', 'Descanso ganado', 'Al parque un rato'],
+  noche: ['Me voy a casa', 'Buenas noches', 'Turno nocturno', 'La ciudad nunca duerme']
+};
 export class NPC {
   constructor(o) {
     Object.assign(this, {
       gx: 8.5, gy: 10.5, speed: 1.1, state: 'idle', phase: 0,
       seed: Math.random() * 10, name: 'Agent', colorTag: '#9fd8ff',
       pal: { skin: '#e8b88a', hair: '#2c2c3c', jacket: '#4a5a8a', pants: '#23263a' },
-      talk: null, questId: null, estatico: false, sentado: false, dir: 0
+      talk: null, questId: null, estatico: false, sentado: false, dir: 0,
+      alpha: 1, objetivo: 1, grupo: 'ocio', maletin: false, burbujaT: 0
     }, o);
     this.path = o.path || null;
     this.pi = 0;
   }
+  // --- HORARIOS: 7-9 commute · 9-17 trabajo · 17-21 ocio · 21-7 casa ---
+  agenda(dt) {
+    if (this.estatico || this.sentado) { this.objetivo = 1; this.maletin = false; return; }
+    const f = faseDia();
+    const h = f.hora + f.min / 60;
+    const enTrabajo = h >= 9 && h < 17;
+    const enCasa = h >= 21 || h < 7;
+    const commute = h >= 7 && h < 9;
+    switch (this.grupo) {
+      case 'oficina':
+        // entra a la oficina en horario laboral; commute con maletín
+        this.objetivo = (enTrabajo || enCasa) ? 0 : 1;
+        this.maletin = commute || (h >= 17 && h < 18);
+        this.speedMult = commute ? 1.4 : 1;
+        break;
+      case 'campo':
+        // agente de campo: reparte todo el día, descansa de noche
+        this.objetivo = enCasa ? 0 : 1;
+        this.maletin = !enCasa;
+        this.speedMult = enTrabajo ? 1.15 : 1;
+        break;
+      case 'ocio':
+        // pasea de día; sale de ocio por la tarde; duerme de noche
+        this.objetivo = (h >= 22.5 || h < 8) ? 0 : 1;
+        this.speedMult = (h >= 17 && h < 21) ? 0.8 : 1;
+        break;
+      case 'noche':
+        // turno nocturno: trabaja de noche, duerme de día
+        this.objetivo = (h >= 7 && h < 20) ? 0 : 1;
+        this.maletin = !!(h >= 20 || h < 7);
+        this.speedMult = 1;
+        break;
+      default:
+        this.objetivo = 1; this.speedMult = 1;
+    }
+  }
   update(dt, others) {
+    this.agenda(dt);
+    // presencia con fundido suave
+    this.alpha += (this.objetivo - this.alpha) * Math.min(1, dt * 2.2);
+    // totalmente oculto: reaparece en otro punto de su ruta (salió por otra puerta)
+    if (this.alpha < 0.05 && this.objetivo === 0 && this.path && this.path.length > 1) {
+      const i = Math.floor(hash2(Math.floor(G.tiempo * 3), this.seed * 97) * this.path.length);
+      this.gx = this.path[i][0]; this.gy = this.path[i][1];
+      this.pi = (i + 1) % this.path.length;
+    }
+    // burbujas ambientales por horario
+    if (this.burbujaT > 0) {
+      this.burbujaT -= dt;
+      if (this.burbujaT <= 0) this.talk = null;
+    } else if (this.alpha > 0.9 && !this.sentado && Math.random() < dt * 0.035) {
+      const f = faseDia();
+      const pool = f.noche ? BURBUJAS.noche : (f.nombre === 'ATARDECER' || f.hora >= 17 ? BURBUJAS.ocio : (f.hora < 10 ? BURBUJAS.manana : BURBUJAS.tarde));
+      this.talk = pool[Math.floor(Math.random() * pool.length)];
+      this.burbujaT = 2.4;
+    }
     if (this.sentado) return;
     if (this.estatico || !this.path || this.path.length < 2) {
       this.state = 'idle';
@@ -167,7 +273,7 @@ export class NPC {
       if (hash2(Math.floor(this.gx * 3), Math.floor(this.gy * 3) + Math.floor(G.tiempo)) > 0.9) this.state = 'idle';
       return;
     }
-    const sp = this.speed * dt * (this.state === 'idle' ? 0 : 1);
+    const sp = this.speed * (this.speedMult || 1) * dt;
     const nx = this.gx + dx / d * sp, ny = this.gy + dy / d * sp;
     // NUNCA atravesar sólidos (vale para ciudad e interiores)
     if (!blockedAt(nx, ny)) { this.gx = nx; this.gy = ny; }
@@ -177,6 +283,7 @@ export class NPC {
     // separación suave con otros agentes
     for (const o of others) {
       if (o === this || o.sentado) continue;
+      if ((o.alpha !== undefined && o.alpha < 0.3)) continue;
       const dd = dist2(this.gx, this.gy, o.gx, o.gy);
       if (dd < 0.14 && dd > 0.0001) {
         const f = 0.4 * dt;
@@ -254,7 +361,7 @@ export function updatePlayer(dt) {
   player.trail = player.trail.filter(tr => tr.a > 0);
 }
 
-// población de la ciudad (26 agentes en la metrópoli)
+// población de la ciudad (agentes CON HORARIOS: oficina, campo, ocio, noche)
 export const npcs = [];
 export function spawnNPCs() {
   const palettes = [
@@ -265,6 +372,10 @@ export function spawnNPCs() {
     { skin: '#e8b88a', hair: '#b03a2a', jacket: '#3a4a9a', pants: '#1a1d2c' },
     { skin: '#c98d5e', hair: '#2c2c3c', jacket: '#6a3a8a', pants: '#232630' }
   ];
+  // reparto de turnos por índice (vida diaria real)
+  const GRUPOS = ['oficina', 'campo', 'oficina', 'ocio', 'campo', 'ocio', 'oficina', 'noche',
+    'campo', 'ocio', 'oficina', 'noche', 'campo', 'ocio', 'oficina', 'campo', 'ocio', 'campo',
+    'oficina', 'noche', 'ocio', 'campo', 'oficina', 'noche'];
   const defs = [
     { name: 'Agent_773', pi: 0 }, { name: 'Beta-3', pi: 1 }, { name: 'Omega-5', pi: 2 },
     { name: 'Lorena', pi: 3 }, { name: 'AgentA', pi: 4 }, { name: 'Diego', pi: 5 },
@@ -281,6 +392,7 @@ export function spawnNPCs() {
   let k = 0;
   for (const d of defs) {
     const o = { ...d, seed: k * 1.7 + 0.3, pal: palettes[k % palettes.length], speed: 0.95 + hash2(k, 7) * 0.55 };
+    if (!d.estatico) o.grupo = GRUPOS[k % GRUPOS.length];
     if (d.estatico && d.spot && spots[d.spot]) {
       o.gx = spots[d.spot].gx; o.gy = spots[d.spot].gy + 0.35;
     } else {

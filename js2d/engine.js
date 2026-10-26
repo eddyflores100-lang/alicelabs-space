@@ -1,10 +1,10 @@
 // ============================================================
-// ALICE CITY v5 — MOTOR 2D ISOMÉTRICO PIXEL
-// ALICELABS · ZOLO · Task 259
+// ALICE CITY v8 — MOTOR 2D (CIUDAD VIVA: luz, gradientes, horarios)
+// ALICELABS · ZOLO · Task 263
 // ============================================================
 
 export const TW = 32, TH = 16;      // tamaño de tile isométrico
-export const VW = 640, VH = 360;    // resolución interna (pixel-art)
+export const VW = 1280, VH = 720;   // resolución interna alta (definición)
 
 // ---- Estado global compartido ----
 export const G = {
@@ -21,8 +21,29 @@ export const G = {
   overview: false,
   iniciado: false,
   fade: 0, fadeDir: 0, fadeCb: null,
-  dron: false, trail: false, badge: false
+  dron: false, trail: false, badge: false,
+  relojMin: 7 * 60 + 30,   // hora del juego en minutos (07:30)
+  dia: 1                   // día de la semana virtual
 };
+
+// ---- RELOJ DEL JUEGO: 1 segundo real = 1 minuto de juego ----
+export function tickReloj(dt) {
+  G.relojMin += dt;                  // dt ya está en segundos → +1 min de juego por segundo real (día completo = 24 min reales)
+  if (G.relojMin >= 24 * 60) { G.relojMin -= 24 * 60; G.dia++; }
+}
+
+// fase del día: luz ambiente, tinte y horario
+export function faseDia() {
+  const m = G.relojMin % (24 * 60);
+  const h = Math.floor(m / 60), mn = Math.floor(m % 60);
+  const hf = h + mn / 60;
+  let nombre = 'DÍA', noche = false, tint = null, luz = 1;
+  if (hf >= 6 && hf < 8) { nombre = 'AMANECER'; tint = 'rgba(255,186,110,0.10)'; luz = 0.96; }
+  else if (hf >= 8 && hf < 17.5) { nombre = 'DÍA'; luz = 1; }
+  else if (hf >= 17.5 && hf < 19.5) { nombre = 'ATARDECER'; tint = 'rgba(255,128,64,0.17)'; luz = 0.9; }
+  else { nombre = 'NOCHE'; noche = true; tint = 'rgba(16,30,74,0.33)'; luz = 0.78; }
+  return { nombre, noche, tint, luz, hora: h, min: mn };
+}
 
 // cargar estado persistente v5
 try {
@@ -46,7 +67,8 @@ export function saveState() {
 const canvas = document.getElementById('game');
 export const ctx = canvas.getContext('2d');
 canvas.width = VW; canvas.height = VH;
-ctx.imageSmoothingEnabled = false;
+ctx.imageSmoothingEnabled = true;
+ctx.imageSmoothingQuality = 'high';
 
 export function resize() {
   const s = Math.max(0.5, Math.min(innerWidth / VW, innerHeight / VH));

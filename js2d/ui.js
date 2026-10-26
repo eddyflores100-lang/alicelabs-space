@@ -3,7 +3,7 @@
 // Menú izquierdo · chat de agentes · HUD · tareas · tienda ·
 // billetera ALC · registros
 // ============================================================
-import { G, addCoins, spendCoins, saveState, sfx, beep, audioInit, onCoinsChange } from './engine.js';
+import { G, addCoins, spendCoins, saveState, sfx, beep, audioInit, onCoinsChange, faseDia } from './engine.js';
 import { player, npcs } from './agents.js';
 import { MAPS, getCurrent } from './maps.js';
 import { spots } from './city.js';
@@ -201,10 +201,14 @@ export function initUI() {
   document.getElementById('chat-send').addEventListener('click', () => sendChat());
   inp.addEventListener('keydown', e => { if (e.key === 'Enter') sendChat(); e.stopPropagation(); });
 
-  // reloj
+  // reloj DEL JUEGO: día virtual + fase de luz
   setInterval(() => {
     const c = document.getElementById('reloj');
-    if (c) c.textContent = new Date().toLocaleTimeString('es', { hour12: false });
+    if (!c) return;
+    const f = faseDia();
+    const hh = String(f.hora).padStart(2, '0'), mm = String(f.min).padStart(2, '0');
+    c.textContent = `DÍA ${G.dia} · ${hh}:${mm} · ${f.nombre}`;
+    c.style.color = f.noche ? '#9fb8ff' : (f.nombre === 'ATARDECER' ? '#ffb36b' : '#ffd23f');
   }, 1000);
 
   // energía + activos

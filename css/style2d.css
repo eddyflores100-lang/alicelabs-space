@@ -2,10 +2,10 @@
    ALICE CITY v5 — CENTRO DE MANDO (estilo 80s pixel)
    ============================================================ */
 :root {
-  --bg: #05060f;
-  --panel: rgba(9, 12, 26, 0.94);
-  --panel2: rgba(13, 17, 34, 0.96);
-  --line: #1d2b4a;
+  --bg: #0b1226;
+  --panel: rgba(13, 18, 36, 0.92);
+  --panel2: rgba(17, 23, 44, 0.94);
+  --line: #243458;
   --cian: #00f0ff;
   --verde: #39ff88;
   --magenta: #ff2fb3;
@@ -24,17 +24,14 @@ body {
 #game {
   position: absolute; left: 50%; top: 50%;
   transform: translate(-50%, -50%);
-  image-rendering: pixelated;
-  image-rendering: crisp-edges;
-  background: #05060f;
+  image-rendering: auto;             /* v8: render suave de alta definición */
+  background: #182650;
   z-index: 1;
 }
-/* scanlines + viñeta retro */
+/* viñeta sutil (sin scanlines: fuera el efecto CRT sucio) */
 #scan {
   position: fixed; inset: 0; z-index: 40; pointer-events: none;
-  background:
-    radial-gradient(ellipse at center, transparent 55%, rgba(0,0,10,0.35) 100%),
-    repeating-linear-gradient(0deg, rgba(255,255,255,0.015) 0 1px, transparent 1px 3px);
+  background: radial-gradient(ellipse at center, transparent 68%, rgba(10,16,38,0.22) 100%);
 }
 .hidden { display: none !important; }
 

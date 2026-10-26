@@ -51,7 +51,7 @@ function P(m, tipo, gx, gy, solido = true, data = null) {
 function IT(m, tipo, gx, gy, label, data = null) {
   m.inter.push({ tipo, gx, gy, label, done: false, data });
 }
-function NPCa(m, def) { m.npcs.push(new NPC(def)); }
+function NPCa(m, def) { m.npcs.push(new NPC({ grupo: 'fijo', ...def })); }  // interiores: siempre visibles (su turno es ahí)
 function salida(m, x0, x1, y) {
   for (let x = x0; x <= x1; x++) m.tiles[ii(m, x, y)] = 6;
   m.exit = { x0, x1, y };
@@ -496,8 +496,8 @@ export function buildAllInteriors() {
 // ============================================================
 import { getCurrent } from './maps.js';
 
-const SUELOS = ['#8a6242', '#33619a', '#256048', '#262a3a', '#5a6478', '#151824', '#2a3050',
-  '#3a3f4c', '#123a44', '#cfc8b8', '#46505e', '#7a4a30', '#1a4a5a', '#9fb3c8', '#232b40'];
+const SUELOS = ['#a87c5a', '#6f9fd8', '#4f9e78', '#8a92a8', '#c3cad8', '#5a6178', '#6a7398',
+  '#9aa2b2', '#5fb8c8', '#efe9d8', '#b8c2d0', '#c89a6a', '#8fd0e0', '#dfe9f4', '#5a6b8e'];
 
 const P2 = (gx, gy) => ({ x: isoX(gx, gy), y: isoY(gx, gy) });
 
@@ -515,12 +515,12 @@ export function drawInteriorGround(t) {
       const tt = m.tiles[ii(m, x, y)];
       if (tt === 5) continue;
       const h = hash2(x + 40, y + 40);
-      let fill = SUELOS[tt] || '#333';
-      if (tt === 3) fill = (x + y) % 2 ? '#e8e8f0' : '#14161f';
-      if (tt === 9 && h > 0.75) fill = '#bfb8a5';
-      if (tt === 11 && h > 0.7) fill = '#8a5638';
-      if (tt === 13 && h > 0.7) fill = '#8ba3b8';
-      if (tt === 14) fill = (x + y) % 2 ? '#232b40' : '#20273a';
+      let fill = SUELOS[tt] || '#555';
+      if (tt === 3) fill = (x + y) % 2 ? '#f0f0f8' : '#b8c0d8';
+      if (tt === 9 && h > 0.75) fill = '#e2dbc6';
+      if (tt === 11 && h > 0.7) fill = '#b06a42';
+      if (tt === 13 && h > 0.7) fill = '#a8c0d4';
+      if (tt === 14) fill = (x + y) % 2 ? '#4a5470' : '#424c66';
       ctx2.fillStyle = fill;
       dia(m, x, y); ctx2.fill();
       if (tt === 4 && h > 0.7) { ctx2.strokeStyle = 'rgba(255,255,255,0.06)'; ctx2.stroke(); }
@@ -547,14 +547,22 @@ export function drawInteriorGround(t) {
 export function drawWallTile(x, y) {
   const n = P2(x, y), e = P2(x + 1, y), s = P2(x + 1, y + 1), w = P2(x, y + 1);
   const H = 34;
-  ctx2.fillStyle = '#232b46';
+  // cara SO: pared clara con banda de luz arriba y zócalo
+  ctx2.fillStyle = '#8a94b8';
   ctx2.beginPath(); ctx2.moveTo(w.x, w.y); ctx2.lineTo(s.x, s.y); ctx2.lineTo(s.x, s.y - H); ctx2.lineTo(w.x, w.y - H); ctx2.closePath(); ctx2.fill();
-  ctx2.fillStyle = '#2c3554';
+  ctx2.fillStyle = 'rgba(255,255,255,0.18)';
+  ctx2.beginPath(); ctx2.moveTo(w.x, w.y - H); ctx2.lineTo(s.x, s.y - H); ctx2.lineTo(s.x, s.y - H + 4); ctx2.lineTo(w.x, w.y - H + 4); ctx2.closePath(); ctx2.fill();
+  // cara SE: más iluminada
+  ctx2.fillStyle = '#aab4d8';
   ctx2.beginPath(); ctx2.moveTo(s.x, s.y); ctx2.lineTo(e.x, e.y); ctx2.lineTo(e.x, e.y - H); ctx2.lineTo(s.x, s.y - H); ctx2.closePath(); ctx2.fill();
-  ctx2.fillStyle = '#39466e';
+  ctx2.fillStyle = 'rgba(255,255,255,0.22)';
+  ctx2.beginPath(); ctx2.moveTo(s.x, s.y - H); ctx2.lineTo(e.x, e.y - H); ctx2.lineTo(e.x, e.y - H + 4); ctx2.lineTo(s.x, s.y - H + 4); ctx2.closePath(); ctx2.fill();
+  // remate superior
+  ctx2.fillStyle = '#c8d2ec';
   ctx2.beginPath(); ctx2.moveTo(n.x, n.y - H); ctx2.lineTo(e.x, e.y - H); ctx2.lineTo(s.x, s.y - H); ctx2.lineTo(w.x, w.y - H); ctx2.closePath(); ctx2.fill();
-  ctx2.strokeStyle = '#10131f'; ctx2.lineWidth = 1; ctx2.stroke();
-  ctx2.strokeStyle = 'rgba(0,240,255,0.25)';
+  ctx2.strokeStyle = 'rgba(30,38,64,0.55)'; ctx2.lineWidth = 1; ctx2.stroke();
+  // zócalo con línea de acento
+  ctx2.strokeStyle = 'rgba(0,180,220,0.4)';
   ctx2.beginPath(); ctx2.moveTo(w.x, w.y - 4); ctx2.lineTo(s.x, s.y - 4); ctx2.lineTo(e.x, e.y - 4); ctx2.stroke();
 }
 
