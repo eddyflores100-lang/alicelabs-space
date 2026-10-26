@@ -22,8 +22,8 @@ body {
   font-size: 12px;
 }
 #game {
-  position: absolute; left: 50%; top: 50%;
-  transform: translate(-50%, -50%);
+  position: fixed; inset: 0;         /* v8.1 MÓVIL: SIEMPRE pantalla completa (sin franja ni bordes) */
+  width: 100%; height: 100%;
   image-rendering: auto;             /* v8: render suave de alta definición */
   background: #182650;
   z-index: 1;
@@ -76,7 +76,10 @@ body {
 /* ============ BARRA SUPERIOR ============ */
 #topbar {
   position: fixed; top: 0; left: 0; right: 0; height: 32px; z-index: 50;
-  display: flex; align-items: center; gap: 16px; padding: 0 12px;
+  display: flex; align-items: center; gap: 16px;
+  padding: 0 12px;
+  padding-left: max(12px, env(safe-area-inset-left));
+  padding-right: max(12px, env(safe-area-inset-right));
   background: linear-gradient(180deg, rgba(10,14,30,0.97), rgba(8,11,24,0.94));
   border-bottom: 1px solid var(--line);
   font-size: 11px;
@@ -199,7 +202,10 @@ body {
 /* ============ BARRA INFERIOR ============ */
 #bottombar {
   position: fixed; bottom: 0; left: 0; right: 0; height: 34px; z-index: 50;
-  display: flex; align-items: center; gap: 18px; padding: 0 12px;
+  display: flex; align-items: center; gap: 18px;
+  padding: 0 12px;
+  padding-left: max(12px, env(safe-area-inset-left));
+  padding-right: max(12px, env(safe-area-inset-right));
   background: linear-gradient(0deg, rgba(10,14,30,0.97), rgba(8,11,24,0.94));
   border-top: 1px solid var(--line);
   font-size: 11px;
@@ -223,6 +229,45 @@ body {
 @keyframes entra { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; } }
 
 /* ============================================================
+   ALICE CITY v8.1 — ROTACIÓN EN MÓVIL (solo horizontal)
+   ============================================================ */
+#rotar {
+  display: none;
+  position: fixed; inset: 0; z-index: 300;
+  flex-direction: column; align-items: center; justify-content: center;
+  gap: 20px; text-align: center;
+  background:
+    radial-gradient(ellipse at 50% 30%, rgba(0,240,255,0.10), transparent 60%),
+    radial-gradient(ellipse at 80% 85%, rgba(255,47,179,0.07), transparent 55%),
+    #0b1226;
+}
+@media (orientation: portrait) and (pointer: coarse) { #rotar { display: flex; } }
+@media (orientation: portrait) { body.touch #rotar { display: flex; } }
+.rotar-fono {
+  width: 62px; height: 102px;
+  border: 4px solid var(--cian); border-radius: 14px;
+  position: relative;
+  box-shadow: 0 0 26px rgba(0,240,255,0.4), inset 0 0 12px rgba(0,240,255,0.15);
+  animation: giraFono 1.7s ease-in-out infinite;
+}
+.rotar-fono::before {
+  content: ''; position: absolute; top: 8px; left: 50%; transform: translateX(-50%);
+  width: 30px; height: 38px; border-radius: 4px;
+  background: linear-gradient(180deg, rgba(0,240,255,0.45), rgba(0,240,255,0.08));
+}
+.rotar-fono::after {
+  content: ''; position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%);
+  width: 18px; height: 4px; border-radius: 2px; background: var(--cian);
+}
+@keyframes giraFono {
+  0%, 18%  { transform: rotate(0deg); }
+  55%, 82% { transform: rotate(-90deg); }
+  100%     { transform: rotate(-90deg); }
+}
+.rotar-t1 { font-size: 17px; font-weight: bold; letter-spacing: 4px; color: #fff; text-shadow: 0 0 14px rgba(0,240,255,0.6); }
+.rotar-t2 { font-size: 12px; letter-spacing: 2px; color: var(--dim); }
+
+/* ============================================================
    ALICE CITY v6 — TÁCTIL / MÓVIL
    ============================================================ */
 /* botones de toggle (solo móvil) */
@@ -238,7 +283,8 @@ body.touch .mtn, body.movil .mtn { display: inline-block; }
 #touch-ui { position: fixed; inset: 0; z-index: 45; pointer-events: none; display: none; }
 body.touch #touch-ui { display: block; }
 #joy {
-  position: absolute; left: 16px; bottom: 78px;
+  position: absolute;
+  left: max(16px, calc(env(safe-area-inset-left) + 8px)); bottom: 78px;
   width: 116px; height: 116px; border-radius: 50%;
   background: rgba(8,12,26,0.45);
   border: 2px solid rgba(0,240,255,0.35);
@@ -255,7 +301,7 @@ body.touch #touch-ui { display: block; }
   box-shadow: 0 0 12px rgba(0,240,255,0.4);
   pointer-events: none;
 }
-#tbtns { position: absolute; right: 14px; bottom: 78px; width: 132px; height: 150px; pointer-events: none; }
+#tbtns { position: absolute; right: max(14px, calc(env(safe-area-inset-right) + 6px)); bottom: 78px; width: 132px; height: 150px; pointer-events: none; }
 .tbtn {
   position: absolute; pointer-events: auto; touch-action: none;
   border-radius: 50%; user-select: none; -webkit-user-select: none;
@@ -271,8 +317,8 @@ body.touch #touch-ui { display: block; }
 .tbtn.mini { right: 84px; bottom: 6px; width: 40px; height: 40px; font-size: 16px; }
 .tbtn.mini:last-child { right: 36px; bottom: 6px; }
 
-/* ---- móvil: menú y chat como overlays ---- */
-@media (max-width: 760px) {
+/* ---- móvil: menú y chat como overlays (pantalla chica por ANCHO o por ALTO=landscape) ---- */
+@media (max-width: 760px), (max-height: 500px) {
   body.movil #menu {
     display: none;
     left: 6px; right: 6px; width: auto; top: 40px; bottom: 42px; z-index: 60;
@@ -287,4 +333,24 @@ body.touch #touch-ui { display: block; }
   #topbar .status, #topbar .ver { display: none; }
   #bottombar { font-size: 10px; gap: 6px; }
   #bottombar .lbl:nth-of-type(2), #bottombar .lbl:nth-of-type(3) { display: none; }
+}
+
+/* ---- v8.1: HORIZONTAL de móvil (pantalla baja): HUD compacto, más juego visible ---- */
+@media (max-height: 500px) {
+  #topbar { height: 27px; gap: 10px; font-size: 10px; }
+  #topbar .ver, #topbar a { display: none; }      /* fuera link 3D y versión */
+  #bottombar { height: 27px; gap: 10px; font-size: 10px; }
+  #energia-bar { width: 80px; }
+  #ticker { display: none; }
+  #menu { top: 32px; bottom: 32px; width: 210px; }
+  #chat { top: 32px; bottom: 32px; width: 200px; }
+  #toasts { top: 34px; }
+  .toast { padding: 5px 12px; font-size: 10.5px; }
+  #joy { bottom: 44px; width: 104px; height: 104px; }
+  #tbtns { bottom: 44px; }
+  .splash-logo { font-size: 36px; letter-spacing: 4px; }
+  #btn-entrar { margin-top: 18px; padding: 11px 34px; }
+  .splash-controles { margin-top: 14px; gap: 10px; font-size: 10px; }
+  .splash-badge { margin-top: 10px; font-size: 10px; }
+  .rotar-t1 { font-size: 15px; }
 }

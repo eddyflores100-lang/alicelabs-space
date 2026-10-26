@@ -116,6 +116,7 @@ export function buildCity() {
   B(26, 8, 2, 2, 74, 'AGENT LABS', '#c17aff', 0);
   B(29, 8, 2, 2, 40, 'SRV-7', '#9aa3c0', 3);
   B(26, 11, 2, 2, 54, 'GYM NEÓN', '#ffd23f', 4);
+  B(29, 11, 2, 2, 60, 'AGENTS HUB', '#00f0ff', 1);       // v8.2: oficina de reunión de agentes
   // --- MERCADO (7-13 / 16-22) ---
   B(8, 17, 2, 2, 58, 'MERCADO', '#ffb347', 4);
   B(11, 17, 2, 2, 62, 'TU APTO', '#00f0ff', 2);
@@ -138,6 +139,7 @@ export function buildCity() {
   spots.doorNeural = { gx: 22.35, gy: 9.0, label: 'NEURAL CORE' };
   spots.doorAnalysis = { gx: 19.35, gy: 12.0, label: 'ANALYSIS CENTER' };
   spots.doorLabs = { gx: 28.35, gy: 9.0, label: 'AGENT LABS' };
+  spots.doorAgents = { gx: 31.35, gy: 12.0, label: 'AGENTS HUB' };
   spots.doorSrv = { gx: 31.35, gy: 9.0, label: 'SRV-7' };
   spots.doorGym = { gx: 28.35, gy: 12.0, label: 'GYM NEÓN' };
   spots.doorMercado = { gx: 10.35, gy: 18.0, label: 'MERCADO' };
@@ -334,6 +336,7 @@ export const puertas = [
   { spot: 'doorNeural', mapa: 'neural', label: 'NEURAL CORE' },
   { spot: 'doorAnalysis', mapa: 'analysis', label: 'ANALYSIS CENTER' },
   { spot: 'doorLabs', mapa: 'labs', label: 'AGENT LABS' },
+  { spot: 'doorAgents', mapa: 'agenthub', label: 'AGENTS HUB' },
   { spot: 'doorSrv', mapa: 'srv7', label: 'SRV-7' },
   { spot: 'doorGym', mapa: 'gym', label: 'GYM NEÓN' },
   { spot: 'doorMercado', mapa: 'mercado', label: 'MERCADO' },

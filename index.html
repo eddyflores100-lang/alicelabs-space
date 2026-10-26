@@ -2,13 +2,20 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>ALICE CITY v8 — CIUDAD VIVA</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>ALICE CITY v8 — CIUDAD VIVA · AGENTS HUB</title>
 <link rel="stylesheet" href="css/style2d.css">
 </head>
 <body>
 <canvas id="game"></canvas>
 <div id="scan"></div>
+
+<!-- ===== ROTACIÓN (móvil en vertical: se pausa y pide horizontal) ===== -->
+<div id="rotar">
+  <div class="rotar-fono"></div>
+  <div class="rotar-t1">GIRA TU DISPOSITIVO</div>
+  <div class="rotar-t2">ALICE CITY se juega en horizontal</div>
+</div>
 
 <!-- ===== BARRA SUPERIOR ===== -->
 <div id="topbar">
@@ -35,7 +42,7 @@
   <div class="panel" id="panel-mapa">
     <h3>VISTA ESTRATÉGICA</h3>
     <canvas id="mini" width="216" height="216"></canvas>
-    <div class="card-d" style="margin-top:8px">Metrópoli 40×40: 4 avenidas por eje, 9 distritos, cinturón verde y 17 puertas con interior. Pulsá <b>M</b> en juego para la vista aérea.</div>
+    <div class="card-d" style="margin-top:8px">Metrópoli 40×40: 4 avenidas por eje, 9 distritos, cinturón verde y 18 puertas con interior (nuevo: AGENTS HUB en Innovación). Pulsá <b>M</b> en juego para la vista aérea.</div>
   </div>
   <div class="panel hidden" id="panel-agentes">
     <h3>RED DE AGENTES</h3>
@@ -88,7 +95,7 @@
 <div id="splash">
   <div class="splash-logo">ALICE <span>CITY</span></div>
   <div class="splash-sub">AI OPERATIONS COMMAND · CIUDAD VIVA EDITION</div>
-  <div class="splash-badge">v8.0 · DÍA/NOCHE CON HORARIOS · 17 INTERIORES · MÓVIL + PC</div>
+  <div class="splash-badge">v8.2 · AGENTS HUB · DÍA/NOCHE · 18 INTERIORES · MÓVIL HORIZONTAL + PC</div>
   <button id="btn-entrar">▶ ENTRAR A LA CIUDAD</button>
   <div class="splash-controles">
     <span><b>WASD / JOY</b>mover</span>
@@ -96,7 +103,7 @@
     <span><b>M</b>vista aérea</span>
     <span><b>+/-</b>zoom</span>
   </div>
-  <div class="splash-pie">ALICELABS · AGENTES CON HORARIOS: TRABAJAN, PASEAN Y COBRAN EN ALC</div>
+  <div class="splash-pie">ALICELABS · LOS AGENTES SE REÚNEN, COMPARTEN SKILLS Y TRABAJAN POR ALC</div>
 </div>
 
 <script>

@@ -4,7 +4,7 @@
 // ============================================================
 
 export const TW = 32, TH = 16;      // tamaño de tile isométrico
-export const VW = 1280, VH = 720;   // resolución interna alta (definición)
+export let VW = 1280, VH = 720;    // = viewport REAL (recalculado en resize; dpr incluido)
 
 // ---- Estado global compartido ----
 export const G = {
@@ -70,12 +70,27 @@ canvas.width = VW; canvas.height = VH;
 ctx.imageSmoothingEnabled = true;
 ctx.imageSmoothingQuality = 'high';
 
+// factor de escala visual respecto al diseño base 1280×720.
+// Se usa para el zoom de cámara y para textos de espacio de pantalla.
+export function factorVisual() {
+  const f = Math.min(VW / 1280, VH / 720);
+  // móviles (pantalla chica): boost para que los objetos se vean GRANDES
+  return f * (Math.min(innerWidth, innerHeight) < 500 ? 1.55 : 1);
+}
+
 export function resize() {
-  const s = Math.max(0.5, Math.min(innerWidth / VW, innerHeight / VH));
-  canvas.style.width = Math.floor(VW * s) + 'px';
-  canvas.style.height = Math.floor(VH * s) + 'px';
+  // v8.1 MÓVIL: el canvas SIEMPRE llena toda la ventana (sin letterbox ni franja
+  // pequeña). dpr con tope 2: nitidez retina sin fundir móviles modestos.
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  VW = Math.max(320, Math.round(innerWidth * dpr));
+  VH = Math.max(240, Math.round(innerHeight * dpr));
+  canvas.width = VW; canvas.height = VH;
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
+  dispatchEvent(new Event('alice-resize'));   // main.js re-aplica el zoom adaptativo
 }
 addEventListener('resize', resize);
+addEventListener('orientationchange', () => setTimeout(resize, 120));
 resize();
 
 // ---- Cámara ----

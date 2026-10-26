@@ -3,7 +3,7 @@
 // Ciudad viva: horarios de agentes, ciclo día/noche, nubes,
 // pájaros y luciérnagas. Resolución alta con gradientes.
 // ============================================================
-import { G, ctx, cam, VW, VH, gridToWorld, toScreen, keys, consume, clamp, lerp, dist2, fadeTo, addCoins, saveState, audioInit, sfx, onCoinsChange, tickReloj, faseDia } from './engine.js';
+import { G, ctx, cam, VW, VH, gridToWorld, toScreen, keys, consume, clamp, lerp, dist2, fadeTo, addCoins, saveState, audioInit, sfx, onCoinsChange, tickReloj, faseDia, factorVisual } from './engine.js';
 import { buildCity, spots, buildings, props, crosswalks, distritos, tile as cityTileArr, puertas, MAPC, MAPR } from './city.js';
 import { drawGround, drawBuilding, drawProp, drawLights, drawCarBody, buildGroundCache, drawNubes, drawSombrasNubes, drawLuciernagas, drawAmbiente, drawCielo } from './draw.js';
 import { player, updatePlayer, npcs, spawnNPCs, drawAgent, drawSeated, setCarBlock } from './agents.js';
@@ -52,26 +52,53 @@ window.__alice = {
 const splash = document.getElementById('splash');
 document.getElementById('btn-entrar').addEventListener('click', () => {
   audioInit();
+  // v8.1 MÓVIL: pantalla completa al entrar (Android/Chrome; iOS ignora y sigue igual)
+  if (window.__esTouch || matchMedia('(pointer: coarse)').matches) {
+    try {
+      const el = document.documentElement;
+      const fs = el.requestFullscreen || el.webkitRequestFullscreen;
+      if (fs) fs.call(el).catch(() => {});
+    } catch (e) { }
+  }
   splash.classList.add('hidden');
   G.iniciado = true;
   initUI();
   startBots();
   sfx.tarea();
   pushLog('Operador conectado a la red de agentes', 'verde');
-  chatPush('Ada', '¡ALICE CITY v8 CIUDAD VIVA! Ciclo día/noche con horarios: los agentes van al trabajo, pasean y descansan. ¡Mira el reloj!', '#ffd23f');
+  chatPush('Ada', '¡NUEVO AGENTS HUB! La oficina donde los agentes se reúnen: open-space, pizarra de skills y turnos pagados en ALC. Queda en el distrito Innovación.', '#00f0ff');
   setTimeout(() => toast(window.__esTouch ? 'Joystick para moverte · E para entrar' : 'Usa WASD · E entrar/hablar · M mapa'), 800);
 });
 
 // ---------- cámara ----------
 cam.x = gridToWorld(player.gx, player.gy).x;
 cam.y = gridToWorld(player.gx, player.gy).y;
-let zoomObjetivo = 1.6;   // v8: vista cercana y definida (los objetos se ven GRANDES)
+
+// v8.1 ZOOM ADAPTATIVO: base según modo × factor de pantalla × multiplicador del
+// usuario. factorVisual() ya incluye el boost móvil → en un teléfono en HORIZONTAL
+// los objetos se ven tan grandes como en un monitor (fin del «se ven muy pequeños»).
+let zoomMult = 1;          // zoom manual (+/− / rueda) sobre la base adaptativa
+let zoomObjetivo = 1.6;
+function zoomBase() {
+  const base = G.overview ? 0.88 : (G.modo === 'city' ? 1.6 : 1.9);
+  return base * factorVisual();
+}
+function aplicarZoom() { zoomObjetivo = clamp(zoomBase() * zoomMult, 0.35, 5.5); }
+aplicarZoom();
+addEventListener('alice-resize', aplicarZoom);
+addEventListener('resize', aplicarZoom);
 
 addEventListener('wheel', e => {
   if (!G.iniciado) return;
-  zoomObjetivo = clamp(zoomObjetivo * (e.deltaY > 0 ? 0.9 : 1.1), 0.55, 2.8);
+  zoomMult = clamp(zoomMult * (e.deltaY > 0 ? 0.9 : 1.1), 0.35, 2.6);
   G.overview = false;
+  aplicarZoom();
 });
+
+// v8.1 MÓVIL: en vertical (portrait) el juego se PAUSA detrás del cartel
+// «gira tu dispositivo» — ALICE CITY se juega en horizontal.
+const pausaRotar = () => matchMedia('(orientation: portrait)').matches &&
+  (matchMedia('(pointer: coarse)').matches || window.__esTouch);
 
 // ---------- interacciones ----------
 let cerca = null;   // {tipo, ref, label}
@@ -125,7 +152,7 @@ function entrarInterior(p) {
     player.gx = m.spawn[0]; player.gy = m.spawn[1];
     cam.x = gridToWorld(player.gx, player.gy).x;
     cam.y = gridToWorld(player.gx, player.gy).y;
-    zoomObjetivo = 1.9;
+    aplicarZoom();
     if (p.mapa === 'hq' && !G.v5hq) {
       G.v5hq = true; saveState(); renderTareas();
     }
@@ -144,10 +171,27 @@ function salirACiudad() {
     player.gy = s ? s.gy + 0.6 : 6.5;
     cam.x = gridToWorld(player.gx, player.gy).x;
     cam.y = gridToWorld(player.gx, player.gy).y;
-    zoomObjetivo = 1.6;
+    aplicarZoom();
     pushLog('Vuelves a la ciudad', 'cian');
     sfx.puerta();
   });
+}
+
+// v8.2: guiones de conversación del AGENTS HUB — los dos agentes del par
+// se van alternando frases (burbujas) cada ~3.4 s, en bucle.
+function updateChats(m, dt) {
+  for (const ch of m.chats) {
+    ch.t -= dt;
+    if (ch.t > 0) continue;
+    const linea = ch.lineas[ch.i % ch.lineas.length];
+    ch.i++;
+    const habla = linea[0] === 0 ? ch.a : ch.b;
+    const calla = linea[0] === 0 ? ch.b : ch.a;
+    calla.talk = null;
+    habla.talk = linea[1];
+    habla.burbujaT = 3.3;
+    ch.t = 3.4;
+  }
 }
 
 function interactuar() {
@@ -192,6 +236,34 @@ function interactuar() {
       toast('Café: +' + 8 + ' energía');
       sfx.moneda();
       break;
+    // ---- v8.2 AGENTS HUB: compartir skills y trabajar ----
+    case 'skill': {
+      const SKILLS = ['Prompt Engineering', 'Análisis de datos', 'Negociación x402', 'Diseño de agentes',
+        'Auditoría de contratos', 'Minería eficiente', 'Patrulla exprés', 'Cocina de agentes', 'Orquestación de NPCs'];
+      const sk = SKILLS[Math.floor(Math.random() * SKILLS.length)];
+      G.energia = Math.min(100, G.energia + 4);
+      updateHUD(); saveState();
+      sfx.talk();
+      toast('Skill compartida: ' + sk + ' · +4 inspiración');
+      pushLog('Pizarra de skills · ' + sk, 'cian');
+      break;
+    }
+    case 'trabajo': {
+      const cd = (G.trabajoListo || 0) - G.relojMin;
+      if (cd > 0) {
+        toast('Descanso: próximo turno en ' + Math.ceil(cd) + ' min de juego');
+        sfx.error();
+        break;
+      }
+      const pago = 5 + Math.floor(Math.random() * 7);   // 5–11 ALC por turno
+      addCoins(pago, 'Turno de trabajo en AGENTS HUB');
+      G.trabajoListo = G.relojMin + 90;                  // cooldown: 90 min de juego
+      sfx.moneda();
+      toast('+' + pago + ' ALC · buen turno de trabajo');
+      pushLog('Turno en el hub · +' + pago + ' ALC', 'verde');
+      if (qEstado('P14') === 'activa') completarQuest('P14');
+      break;
+    }
     case 'accion': {
       const it = cerca.ref;
       toast(it.data && it.data.msg ? it.data.msg : 'Hecho');
@@ -265,6 +337,18 @@ const DIALOGOS = {
   Nave: ['Con este café arranco el turno de datos.', 'La vitrina de Tara… mira las facturas de Neón.'],
   Rocco: ['¡Vamos! Una vuelta más y la energía se renueva.', 'El gym es gratis para agentes de la red.'],
   'Agente Fit': ['Cinco kilómetros antes del desayuno. Siempre.', 'Rocco no acepta excusas.'],
+  // ---- v8.2 AGENTS HUB · COWORKING ----
+  'Lead Ruya': ['Bienvenido al AGENTS HUB: aquí coordinamos a los equipos de la ciudad.', 'La pizarra de skills es sagrada: comparte lo que sepas y aprende lo que falte.', 'Si quieres ganarte ALC extra, toma una mesa libre y trabaja un turno.'],
+  Byte: ['Mi pantalla compila en verde: buen día.', 'Si el hub está silencioso es que todos están en flujo.'],
+  Momo: ['Estoy refactorizando el módulo de pagos en ALC.', 'Los escritorios compartidos dan suerte, lo juro.'],
+  Kilo: ['Hoy toca: auditar contratos y beber café.', 'La pizarra tiene mi skill nueva, échale un ojo.'],
+  Tango: ['Este open-space tiene mejor luz que el HQ, no le digas a Vega.', 'Turno, café, código. Repetir.'],
+  Sable: ['Compartí mi skill de minería en la pizarra.', 'Trabajo mejor con la mesa llena: energía de equipo.'],
+  Wren: ['Aquí las ideas se pegan: pregunta libremente.', 'La reunión de skills es mi momento favorito del día.'],
+  Pax: ['Zoe y yo estamos puliendo prompts.', 'Si ves un par hablando, es que el hub funciona.'],
+  Zoe: ['Mi precisión subió un 12% con la plantilla de Pax.', 'Compartir skills no cuesta: multiplica.'],
+  Orion: ['El contrato x402 ya paga en ALC, sin excusas.', 'Entre todos terminamos antes: así funciona el hub.'],
+  Vela: ['Traigo métricas frescas a la reunión.', 'El lounge es para ideas grandes y cafés largos.'],
   'Dra. Luna': ['Revisiones al día: cero agentes baja de 90 de energía.', 'Si te sientes mal, la camilla es gratis.'],
   'Nurse Pip': ['Turno de vacunación a las 4. No llegues tarde.', 'La clínica nunca duerme, como el Hub.'],
   Vek: ['Trabajo desde casa: el Hub me manda tickets aquí.', 'Mi gato Bit audita mis commits. MIAU incluido.'],
@@ -474,6 +558,9 @@ function loop(now) {
   G.tiempo += dt;
   tickReloj(dt);   // reloj del juego: 1 s real = 1 min virtual
 
+  // v8.1: en portrait táctil el mundo queda congelado tras el cartel de rotación
+  if (pausaRotar()) { requestAnimationFrame(loop); return; }
+
   // fundido
   if (G.fadeDir === 1) {
     G.fade = Math.min(1, G.fade + dt * 3);
@@ -498,7 +585,10 @@ function loop(now) {
   } else {
     updatePlayer(dt);
     const m = getCurrent();
-    if (m) for (const n of m.npcs) n.update(dt, m.npcs);
+    if (m) {
+      for (const n of m.npcs) n.update(dt, m.npcs);
+      if (m.chats) updateChats(m, dt);   // v8.2: agentes conversando en el hub
+    }
   }
   buscarInteraccion();
   updateHUD();
@@ -506,11 +596,11 @@ function loop(now) {
   // zoom suave + overview
   if (consume('m')) {
     G.overview = !G.overview;
-    zoomObjetivo = G.overview ? 0.88 : (G.modo === 'city' ? 1.6 : 1.9);
+    aplicarZoom();
     sfx.ui();
   }
-  if (consume('+') || consume('=')) zoomObjetivo = clamp(zoomObjetivo * 1.2, 0.55, 2.8);
-  if (consume('-')) zoomObjetivo = clamp(zoomObjetivo / 1.2, 0.55, 2.8);
+  if (consume('+') || consume('=')) { zoomMult = clamp(zoomMult * 1.2, 0.35, 2.6); aplicarZoom(); }
+  if (consume('-')) { zoomMult = clamp(zoomMult / 1.2, 0.35, 2.6); aplicarZoom(); }
   if (consume('e')) interactuar();
   cam.zoom = lerp(cam.zoom, zoomObjetivo, dt * 6);
 
@@ -549,18 +639,19 @@ function loop(now) {
 
   ctx.setTransform(1, 0, 0, 1, 0, 0);
 
-  // rótulo del interior actual (espacio de pantalla)
+  // rótulo del interior actual (espacio de pantalla, escala con la resolución)
   if (G.modo !== 'city') {
     const mm = getCurrent();
     if (mm) {
-      ctx.font = 'bold 10px monospace'; ctx.textAlign = 'center';
+      const fv = factorVisual();
+      ctx.font = 'bold ' + Math.max(10, Math.round(10 * fv)) + 'px monospace'; ctx.textAlign = 'center';
       const tw = ctx.measureText(mm.name).width + 14;
       ctx.fillStyle = 'rgba(4,6,14,0.78)';
-      ctx.fillRect(VW / 2 - tw / 2, 6, tw, 16);
+      ctx.fillRect(VW / 2 - tw / 2, 6, tw, 16 * fv);
       ctx.strokeStyle = 'rgba(0,240,255,0.4)';
-      ctx.strokeRect(VW / 2 - tw / 2 + 0.5, 6.5, tw - 1, 15);
+      ctx.strokeRect(VW / 2 - tw / 2 + 0.5, 6.5, tw - 1, 16 * fv - 1);
       ctx.fillStyle = '#00f0ff';
-      ctx.fillText(mm.name, VW / 2, 17);
+      ctx.fillText(mm.name, VW / 2, 6 + 12 * fv);
       ctx.textAlign = 'left';
     }
   }

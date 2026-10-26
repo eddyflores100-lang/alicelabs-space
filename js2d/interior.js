@@ -51,7 +51,11 @@ function P(m, tipo, gx, gy, solido = true, data = null) {
 function IT(m, tipo, gx, gy, label, data = null) {
   m.inter.push({ tipo, gx, gy, label, done: false, data });
 }
-function NPCa(m, def) { m.npcs.push(new NPC({ grupo: 'fijo', ...def })); }  // interiores: siempre visibles (su turno es ahí)
+function NPCa(m, def) {                       // interiores: siempre visibles (su turno es ahí)
+  const n = new NPC({ grupo: 'fijo', ...def });
+  m.npcs.push(n);
+  return n;                                     // v8.2: devuelve ref (chats del AGENTS HUB)
+}
 function salida(m, x0, x1, y) {
   for (let x = x0; x <= x1; x++) m.tiles[ii(m, x, y)] = 6;
   m.exit = { x0, x1, y };
@@ -482,6 +486,66 @@ function buildSrv7() {
   NPCa(m, { name: 'Teco', gx: 1.5, gy: 5.5, speed: 0.8, seed: 22, pal: PAL('#e8b88a', '#101322', '#9aa3c0', '#1a1d30'), colorTag: '#9fd8ff', path: [[1.5, 5.5], [4.5, 5.5], [4.5, 2.5], [1.5, 2.5]] });
 }
 
+// ============================================================
+// AGENTS HUB · COWORKING (v8.2) — la oficina donde los agentes
+// se REÚNEN: open-space con mesas compartidas, pares conversando
+// con guiones, pizarra de skills y mesas libres para TRABAJAR.
+// ============================================================
+function buildAgentsHub() {
+  const m = room('agenthub', 18, 13, 'AGENTS HUB · COWORKING', [9, 11.3]);
+  suelo(m, 1, 1, 16, 11, 4);                         // hormigón claro
+  suelo(m, 2, 2, 11, 6, 8);                          // open-space alfombra teal
+  suelo(m, 13, 2, 16, 7, 11);                        // lounge alfombra cálida
+  suelo(m, 2, 8, 11, 10, 5);                         // zona de mesas libres
+  // ---- OPEN-SPACE: 2 filas de mesas compartidas con pantallas ----
+  for (const d of [[3, 2], [5, 2], [7, 2], [9, 2], [3, 5], [5, 5], [7, 5], [9, 5]]) P(m, 'desk', d[0], d[1], true);
+  // ---- PIZARRA DE SKILLS (muro norte) ----
+  P(m, 'pizarra', 4.5, 0.9, false); P(m, 'pizarra', 8, 0.9, false);
+  IT(m, 'skill', 8, 1.9, 'PIZARRA DE SKILLS (compartir / aprender)');
+  // ---- MESA DE REUNIÓN + LOUNGE ----
+  P(m, 'mesa', 14.5, 4, true, { w: 2.2, d: 1.2 });
+  P(m, 'sofa', 13.4, 6.4, true);
+  P(m, 'cafe', 16.4, 2.4, true);
+  IT(m, 'cafe', 16.4, 3.3, 'CAFÉ (+energía)');
+  P(m, 'mesita', 14.5, 5.4, true);
+  // ---- MESAS LIBRES PARA TRABAJAR (zona sur) ----
+  P(m, 'desk', 3, 8, true); P(m, 'desk', 5, 8, true); P(m, 'desk', 7, 8, true);
+  IT(m, 'trabajo', 4, 9.1, 'SENTARSE A TRABAJAR (+ALC)');
+  P(m, 'planta', 1.5, 1.6, true); P(m, 'planta', 16.5, 1.6, true);
+  P(m, 'planta', 1.5, 10.4, true); P(m, 'planta', 16.5, 10.4, true);
+  P(m, 'reloj', 11.5, 0.9, false);
+  P(m, 'estante', 16.5, 9, true); P(m, 'estante', 16.5, 10, true);
+  salida(m, 8, 9, 12);
+  // ---- AGENTES TRABAJANDO (sentados en las mesas del open-space) ----
+  NPCa(m, { name: 'Byte', gx: 3, gy: 1.55, sentado: true, estatico: true, seed: 41, pal: PAL('#e8b88a', '#101322', '#00b4d8', '#1a1d30'), colorTag: '#00f0ff' });
+  NPCa(m, { name: 'Momo', gx: 5, gy: 1.55, sentado: true, estatico: true, seed: 42, pal: PAL('#f0c9a0', '#b03a2a', '#8a3a5a', '#1e2130'), colorTag: '#ff2fb3' });
+  NPCa(m, { name: 'Kilo', gx: 7, gy: 1.55, sentado: true, estatico: true, seed: 43, pal: PAL('#c98d5e', '#0f0f1a', '#2a7a6a', '#1e2130'), colorTag: '#39ff88' });
+  NPCa(m, { name: 'Tango', gx: 9, gy: 1.55, sentado: true, estatico: true, seed: 44, pal: PAL('#d9a06b', '#5a3a1a', '#b07a2a', '#26202e'), colorTag: '#ffd23f' });
+  NPCa(m, { name: 'Sable', gx: 3, gy: 4.55, sentado: true, estatico: true, seed: 45, pal: PAL('#e8b88a', '#2c2c3c', '#7a9bff', '#232630'), colorTag: '#7a9bff' });
+  NPCa(m, { name: 'Wren', gx: 7, gy: 4.55, sentado: true, estatico: true, seed: 46, pal: PAL('#f0c9a0', '#151824', '#c17aff', '#20263c'), colorTag: '#c17aff' });
+  // ---- PARES CONVERSANDO (guiones alternados en m.chats) ----
+  const pax  = NPCa(m, { name: 'Pax', gx: 10.4, gy: 3.4, estatico: true, seed: 47, dir: 2, pal: PAL('#e8b88a', '#101322', '#e63946', '#1e2130'), colorTag: '#ff9a3d' });
+  const zoe  = NPCa(m, { name: 'Zoe', gx: 11.4, gy: 4.0, estatico: true, seed: 48, dir: 0, pal: PAL('#c98d5e', '#5a3a1a', '#2a9d8f', '#20263c'), colorTag: '#39ff88' });
+  const orion = NPCa(m, { name: 'Orion', gx: 14.2, gy: 2.6, estatico: true, seed: 49, dir: 1, pal: PAL('#d9a06b', '#0f0f1a', '#3a4a9a', '#1a1d2c'), colorTag: '#7ae7ff' });
+  const vela = NPCa(m, { name: 'Vela', gx: 15.3, gy: 3.1, estatico: true, seed: 50, dir: 3, pal: PAL('#f0c9a0', '#b03a2a', '#8a3a5a', '#1e2130'), colorTag: '#ff2fb3' });
+  m.chats = [
+    { a: pax, b: zoe, t: 1.2, i: 0, lineas: [
+      [0, '¿Ya probaste los prompts nuevos?'],
+      [1, 'Sí, me subieron la precisión un 12%'],
+      [0, 'Te comparto mi plantilla de análisis'],
+      [1, 'La subo a la pizarra de skills']
+    ] },
+    { a: orion, b: vela, t: 2.1, i: 0, lineas: [
+      [0, 'El contrato x402 ya paga en ALC'],
+      [1, 'Y el pool reparte cada noche'],
+      [0, '¿Vienes a la reunión de skills?'],
+      [1, 'Ahí estaré, llevo mis métricas']
+    ] }
+  ];
+  // ---- LEAD del hub (misión P13) — de pie al lado SE de la mesa de reunión, accesible ----
+  NPCa(m, { name: 'Lead Ruya', gx: 15.6, gy: 5.5, estatico: true, seed: 51, questId: 'P13', pal: PAL('#e8b88a', '#e8e8f0', '#00b4d8', '#1a1d30'), colorTag: '#00f0ff' });
+}
+
 // ---------- construir todos ----------
 export function buildAllInteriors() {
   buildHQ(); buildHub(); buildNeural(); buildAnalysis(); buildMercado();
@@ -489,6 +553,7 @@ export function buildAllInteriors() {
   buildCasa7(); buildCasa12(); buildCasaGenerica('casa3', 'CASA-3', 'Sole', '#ff2fb3', 33);
   buildCasaGenerica('casa9', 'CASA-9', 'Iker', '#7ae7ff', 34);
   buildCafeteria(); buildGym(); buildClinica(); buildApto2();
+  buildAgentsHub();
 }
 
 // ============================================================
@@ -599,6 +664,11 @@ export function drawIProp(p, t) {
       }
       break;
     case 'pizarra': {
+      // v8.2: patas de caballete (antes flotaba sobre el muro)
+      ctx2.strokeStyle = '#565c70'; ctx2.lineWidth = 2;
+      ctx2.beginPath(); ctx2.moveTo(x - 10, y - 28); ctx2.lineTo(x - 13, y - 2); ctx2.stroke();
+      ctx2.beginPath(); ctx2.moveTo(x + 10, y - 28); ctx2.lineTo(x + 13, y - 2); ctx2.stroke();
+      ctx2.lineWidth = 1;
       ctx2.fillStyle = '#e8e8f0';
       ctx2.fillRect(x - 16, y - 44, 32, 16);
       ctx2.strokeStyle = '#8a8a9a'; ctx2.strokeRect(x - 16, y - 44, 32, 16);

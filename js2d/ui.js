@@ -21,7 +21,9 @@ export const QUESTS = [
   { id: 'P9', t: 'Puertas de la ciudad', d: 'Visita las puertas de DATA HUB, ANALYSIS y SRV-7.', alc: 15, spots: ['doorHub', 'doorAnalysis', 'doorSrv'], giver: null },
   { id: 'P10', t: 'Vida de vecino', d: 'Visita la CASA-7, la CASA-12 y tu APTO del distrito Mercado.', alc: 20, spots: ['doorCasa7', 'doorCasa12', 'doorApto'], giver: null },
   { id: 'P11', t: 'Rutina de barrio', d: 'Pasa por la CAFETERÍA, el GYM NEÓN y las RESIDENCIAS.', alc: 22, spots: ['doorCafe', 'doorGym', 'doorResid'], giver: null },
-  { id: 'P12', t: 'Paseo en el Parque Sur', d: 'Recorre los 3 puntos del Parque Sur de la metrópoli.', alc: 15, spots: ['q12a', 'q12b', 'q12c'], giver: null }
+  { id: 'P12', t: 'Paseo en el Parque Sur', d: 'Recorre los 3 puntos del Parque Sur de la metrópoli.', alc: 15, spots: ['q12a', 'q12b', 'q12c'], giver: null },
+  { id: 'P13', t: 'Reunión de agentes', d: 'Entra al AGENTS HUB y coordina el equipo con Lead Ruya.', alc: 20, npc: 'Lead Ruya', giver: null },
+  { id: 'P14', t: 'Turno en el hub', d: 'Trabaja un turno en el AGENTS HUB: mesa libre + tecla E.', alc: 15, giver: null }
 ];
 
 export function qEstado(id) {
